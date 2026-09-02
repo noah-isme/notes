@@ -45,11 +45,16 @@ async function runMigrations() {
         title varchar(255) DEFAULT '' NOT NULL,
         content text DEFAULT '' NOT NULL,
         is_pinned boolean DEFAULT false NOT NULL,
+        is_public boolean DEFAULT false NOT NULL,
+        share_token varchar(128),
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         updated_at timestamp with time zone DEFAULT now() NOT NULL
       );
+      ALTER TABLE notes ADD COLUMN IF NOT EXISTS is_public boolean DEFAULT false NOT NULL;
+      ALTER TABLE notes ADD COLUMN IF NOT EXISTS share_token varchar(128);
       CREATE INDEX IF NOT EXISTS notes_user_id_idx ON notes (user_id);
       CREATE INDEX IF NOT EXISTS notes_user_id_pinned_updated_idx ON notes (user_id, is_pinned, updated_at);
+      CREATE UNIQUE INDEX IF NOT EXISTS notes_share_token_unique_idx ON notes (share_token);
 
       CREATE TABLE IF NOT EXISTS tags (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

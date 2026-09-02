@@ -21,3 +21,5 @@ export { default as IconZoomOut } from './IconZoomOut.svelte';
 export { default as IconRotateCcw } from './IconRotateCcw.svelte';
 export { default as IconCode } from './IconCode.svelte';
 export { default as IconDownload } from './IconDownload.svelte';
+export { default as IconShare } from './IconShare.svelte';
+export { default as IconLink } from './IconLink.svelte';

@@ -1,16 +1,20 @@
 import { db } from '$lib/server/db';
 import {
+  users,
   notes,
   tags,
   noteTags,
   type Note,
   type Tag,
   type NoteWithTags,
+  type PublicNote,
+  type PublicAuthor,
 } from '$lib/server/db/schema';
 import { eq, and, or, ilike, desc, asc, inArray, sql } from 'drizzle-orm';
 import { validateNoteInput, validateTagName } from '$lib/utils/validation';
+import crypto from 'crypto';
 
-export type { Note, Tag, NoteWithTags };
+export type { Note, Tag, NoteWithTags, PublicNote, PublicAuthor };
 
 export interface GetNotesOptions {
   search?: string;
@@ -22,6 +26,8 @@ export interface CreateNoteData {
   title: string;
   content?: string;
   isPinned?: boolean;
+  isPublic?: boolean;
+  shareToken?: string | null;
   tagNames?: string[];
 }
 
@@ -29,6 +35,8 @@ export interface UpdateNoteData {
   title?: string;
   content?: string;
   isPinned?: boolean;
+  isPublic?: boolean;
+  shareToken?: string | null;
   tagNames?: string[];
 }
 
@@ -50,6 +58,8 @@ export async function createNote(
       title: data.title.trim(),
       content: data.content ?? '',
       isPinned: data.isPinned ?? false,
+      isPublic: data.isPublic ?? false,
+      shareToken: data.shareToken ?? null,
     })
     .returning();
 
@@ -246,6 +256,8 @@ export async function updateNote(
   if (data.title !== undefined) updates.title = data.title.trim();
   if (data.content !== undefined) updates.content = data.content;
   if (data.isPinned !== undefined) updates.isPinned = data.isPinned;
+  if (data.isPublic !== undefined) updates.isPublic = data.isPublic;
+  if (data.shareToken !== undefined) updates.shareToken = data.shareToken;
 
   await db
     .update(notes)
@@ -367,3 +379,142 @@ export async function deleteTag(userId: string, tagId: string): Promise<boolean>
 
   return deleted.length > 0;
 }
+
+/**
+ * Enables public sharing for a note owned by userId, generating a URL-safe token if not present.
+ */
+export async function enableShare(
+  userId: string,
+  noteId: string
+): Promise<NoteWithTags | null> {
+  const [existing] = await db
+    .select()
+    .from(notes)
+    .where(and(eq(notes.id, noteId), eq(notes.userId, userId)));
+
+  if (!existing) return null;
+
+  const shareToken =
+    existing.shareToken || crypto.randomBytes(24).toString('base64url');
+
+  await db
+    .update(notes)
+    .set({
+      isPublic: true,
+      shareToken,
+      updatedAt: sql`NOW()`,
+    })
+    .where(and(eq(notes.id, noteId), eq(notes.userId, userId)));
+
+  return getNoteById(userId, noteId);
+}
+
+/**
+ * Disables public sharing for a note owned by userId, revoking public access.
+ */
+export async function disableShare(
+  userId: string,
+  noteId: string
+): Promise<NoteWithTags | null> {
+  const [existing] = await db
+    .select()
+    .from(notes)
+    .where(and(eq(notes.id, noteId), eq(notes.userId, userId)));
+
+  if (!existing) return null;
+
+  await db
+    .update(notes)
+    .set({
+      isPublic: false,
+      updatedAt: sql`NOW()`,
+    })
+    .where(and(eq(notes.id, noteId), eq(notes.userId, userId)));
+
+  return getNoteById(userId, noteId);
+}
+
+/**
+ * Regenerates the share token for a note owned by userId, invalidating previous links.
+ */
+export async function regenerateShareToken(
+  userId: string,
+  noteId: string
+): Promise<NoteWithTags | null> {
+  const [existing] = await db
+    .select()
+    .from(notes)
+    .where(and(eq(notes.id, noteId), eq(notes.userId, userId)));
+
+  if (!existing) return null;
+
+  const shareToken = crypto.randomBytes(24).toString('base64url');
+
+  await db
+    .update(notes)
+    .set({
+      shareToken,
+      isPublic: true,
+      updatedAt: sql`NOW()`,
+    })
+    .where(and(eq(notes.id, noteId), eq(notes.userId, userId)));
+
+  return getNoteById(userId, noteId);
+}
+
+/**
+ * Retrieves a public note by its unique share token if and only if isPublic is true.
+ * Returns null if the note does not exist, is private, or has an invalid token.
+ */
+export async function getPublicNoteByToken(token: string): Promise<PublicNote | null> {
+  if (!token || typeof token !== 'string' || token.trim().length === 0) {
+    return null;
+  }
+
+  const cleanToken = token.trim();
+
+  const [result] = await db
+    .select({
+      note: notes,
+      authorId: users.id,
+      authorName: users.name,
+      authorEmail: users.email,
+    })
+    .from(notes)
+    .innerJoin(users, eq(notes.userId, users.id))
+    .where(and(eq(notes.shareToken, cleanToken), eq(notes.isPublic, true)));
+
+  if (!result || !result.note) {
+    return null;
+  }
+
+  const attachedTags = await db
+    .select({
+      id: tags.id,
+      userId: tags.userId,
+      name: tags.name,
+      createdAt: tags.createdAt,
+    })
+    .from(noteTags)
+    .innerJoin(tags, eq(noteTags.tagId, tags.id))
+    .where(eq(noteTags.noteId, result.note.id))
+    .orderBy(asc(tags.name));
+
+  return {
+    id: result.note.id,
+    title: result.note.title,
+    content: result.note.content,
+    isPinned: result.note.isPinned,
+    isPublic: result.note.isPublic,
+    shareToken: result.note.shareToken,
+    createdAt: result.note.createdAt,
+    updatedAt: result.note.updatedAt,
+    author: {
+      id: result.authorId,
+      name: result.authorName,
+      email: result.authorEmail,
+    },
+    tags: attachedTags,
+  };
+}
+

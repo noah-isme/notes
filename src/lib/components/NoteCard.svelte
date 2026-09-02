@@ -7,6 +7,8 @@
     title: string;
     content: string;
     isPinned: boolean;
+    isPublic?: boolean;
+    shareToken?: string | null;
     createdAt: Date | string;
     updatedAt: Date | string;
     tags: Array<{ id: string; name: string }>;

@@ -7,6 +7,7 @@
 <script lang="ts">
   import { renderMarkdown } from '$lib/utils/markdown';
   import { mermaidRenderer } from '$lib/actions/mermaid';
+  import ShareDialog from './ShareDialog.svelte';
   import {
     IconPin,
     IconEdit,
@@ -16,6 +17,7 @@
     IconAlert,
     IconClose,
     IconMaximize,
+    IconShare,
   } from './icons';
 
   export interface NoteEditorData {
@@ -23,6 +25,8 @@
     title: string;
     content: string;
     isPinned: boolean;
+    isPublic?: boolean;
+    shareToken?: string | null;
     tags: Array<{ id?: string; name: string }>;
   }
 
@@ -66,6 +70,9 @@
   let content = $state(getPropValue(() => note?.content ?? ''));
   let debouncedContent = $state(getPropValue(() => note?.content ?? ''));
   let isPinned = $state(getPropValue(() => note?.isPinned ?? false));
+  let isPublic = $state(getPropValue(() => note?.isPublic ?? false));
+  let shareToken = $state<string | null>(getPropValue(() => note?.shareToken ?? null));
+  let isShareDialogOpen = $state(false);
   let tagList = $state<string[]>(getPropValue(() => (note?.tags ? note.tags.map((t) => t.name) : [])));
   let tagInput = $state('');
   let titleTouched = $state(false);
@@ -97,6 +104,8 @@
     content = initialContent;
     debouncedContent = initialContent;
     isPinned = initialIsPinned;
+    isPublic = currentNote?.isPublic ?? false;
+    shareToken = currentNote?.shareToken ?? null;
     tagList = [...initialTagList];
     tagInput = '';
     titleTouched = false;
@@ -146,6 +155,8 @@
       title: title.trim(),
       content,
       isPinned,
+      isPublic,
+      shareToken,
       tags: tagList,
       isDirty: isDirtyDerived,
       isValid: isTitleValid,
@@ -351,6 +362,20 @@
           <span>{isPinned ? 'Pinned' : 'Pin'}</span>
         </label>
 
+        {#if note?.id && !isNew}
+          <button
+            type="button"
+            class="share-toggle-btn {isPublic ? 'is-shared' : ''}"
+            onclick={() => (isShareDialogOpen = true)}
+            title={isPublic ? 'Public sharing enabled (click to manage)' : 'Share note'}
+            aria-label={isPublic ? 'Public sharing enabled' : 'Share note'}
+            data-testid="share-note-btn"
+          >
+            <IconShare size={13} />
+            <span>{isPublic ? 'Shared' : 'Share'}</span>
+          </button>
+        {/if}
+
         <!-- View Mode Switcher -->
         <div
           class="view-mode-tabs segmented-control"
@@ -527,6 +552,21 @@
       </div>
     </div>
   </form>
+
+  {#if note?.id && !isNew}
+    <ShareDialog
+      isOpen={isShareDialogOpen}
+      noteId={note.id}
+      isPublic={isPublic}
+      shareToken={shareToken}
+      noteTitle={title}
+      onClose={() => (isShareDialogOpen = false)}
+      onShareStateChange={(data) => {
+        isPublic = data.isPublic;
+        shareToken = data.shareToken;
+      }}
+    />
+  {/if}
 </div>
 
 <style>
@@ -673,6 +713,40 @@
     border-color: #f59e0b;
     color: #92400e;
     font-weight: 600;
+  }
+
+  .share-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .share-toggle-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #94a3b8;
+  }
+
+  .share-toggle-btn.is-shared {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+    color: #047857;
+    font-weight: 600;
+  }
+
+  .share-toggle-btn.is-shared:hover {
+    background: #d1fae5;
+    border-color: #34d399;
+    color: #065f46;
   }
 
   .sr-only {

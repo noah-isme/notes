@@ -13,6 +13,12 @@ export default defineConfig({
     hookTimeout: 60000,
     isolate: false,
     fileParallelism: false,
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

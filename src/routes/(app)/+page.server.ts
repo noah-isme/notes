@@ -140,4 +140,52 @@ export const actions: Actions = {
       return fail(500, { error: err?.message || 'Failed to toggle pin' });
     }
   },
+
+  enableShare: async ({ request, locals }) => {
+    if (!locals.user) return fail(401, { error: 'Unauthorized' });
+
+    const formData = await request.formData();
+    const id = formData.get('id')?.toString();
+    if (!id) return fail(400, { error: 'Note ID is required' });
+
+    try {
+      const updated = await notesService.enableShare(locals.user.id, id);
+      if (!updated) return fail(404, { error: 'Note not found' });
+      return { success: true, note: updated };
+    } catch (err: any) {
+      return fail(500, { error: err?.message || 'Failed to enable share' });
+    }
+  },
+
+  disableShare: async ({ request, locals }) => {
+    if (!locals.user) return fail(401, { error: 'Unauthorized' });
+
+    const formData = await request.formData();
+    const id = formData.get('id')?.toString();
+    if (!id) return fail(400, { error: 'Note ID is required' });
+
+    try {
+      const updated = await notesService.disableShare(locals.user.id, id);
+      if (!updated) return fail(404, { error: 'Note not found' });
+      return { success: true, note: updated };
+    } catch (err: any) {
+      return fail(500, { error: err?.message || 'Failed to disable share' });
+    }
+  },
+
+  regenerateShareToken: async ({ request, locals }) => {
+    if (!locals.user) return fail(401, { error: 'Unauthorized' });
+
+    const formData = await request.formData();
+    const id = formData.get('id')?.toString();
+    if (!id) return fail(400, { error: 'Note ID is required' });
+
+    try {
+      const updated = await notesService.regenerateShareToken(locals.user.id, id);
+      if (!updated) return fail(404, { error: 'Note not found' });
+      return { success: true, note: updated };
+    } catch (err: any) {
+      return fail(500, { error: err?.message || 'Failed to regenerate share token' });
+    }
+  },
 };

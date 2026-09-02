@@ -67,6 +67,8 @@ export const notes = pgTable(
     title: varchar('title', { length: 255 }).notNull().default(''),
     content: text('content').notNull().default(''),
     isPinned: boolean('is_pinned').notNull().default(false),
+    isPublic: boolean('is_public').notNull().default(false),
+    shareToken: varchar('share_token', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -81,6 +83,7 @@ export const notes = pgTable(
       table.isPinned,
       table.updatedAt
     ),
+    uniqueIndex('notes_share_token_unique_idx').on(table.shareToken),
   ]
 );
 
@@ -187,5 +190,24 @@ export type NoteTag = typeof noteTags.$inferSelect;
 export type NewNoteTag = typeof noteTags.$inferInsert;
 
 export interface NoteWithTags extends Note {
+  tags: Tag[];
+}
+
+export interface PublicAuthor {
+  id: string;
+  name: string | null;
+  email: string;
+}
+
+export interface PublicNote {
+  id: string;
+  title: string;
+  content: string;
+  isPinned: boolean;
+  isPublic: boolean;
+  shareToken: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  author: PublicAuthor;
   tags: Tag[];
 }
