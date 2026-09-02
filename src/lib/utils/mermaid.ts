@@ -49,6 +49,33 @@ export const SLATE_THEME_VARIABLES = {
   activationBorderColor: '#2563eb',
   activationBkgColor: '#dbeafe',
   sequenceNumberColor: '#ffffff',
+
+  // High-contrast, vibrant pie chart palette & typography
+  pie1: '#2563eb', // Vibrant Blue
+  pie2: '#0d9488', // Deep Teal
+  pie3: '#d97706', // Warm Amber / Gold
+  pie4: '#7c3aed', // Vivid Violet
+  pie5: '#059669', // Emerald Green
+  pie6: '#e11d48', // Rose Crimson
+  pie7: '#0284c7', // Sky Cyan
+  pie8: '#ea580c', // Coral Orange
+  pie9: '#4f46e5', // Royal Indigo
+  pie10: '#ca8a04', // Bright Yellow-Amber
+  pie11: '#0891b2', // Deep Cyan
+  pie12: '#be123c', // Dark Pink
+
+  pieTitleTextSize: '18px',
+  pieTitleTextColor: '#0f172a',
+  pieSectionTextSize: '14px',
+  pieSectionTextColor: '#ffffff',
+  pieLegendTextSize: '14px',
+  pieLegendTextColor: '#0f172a',
+  pieStrokeColor: '#ffffff',
+  pieStrokeWidth: '2px',
+  pieOuterStrokeWidth: '2px',
+  pieOuterStrokeColor: '#0f172a',
+  pieOpacity: '0.95',
+
   fontFamily:
     'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   fontSize: '14px',
@@ -102,6 +129,9 @@ export async function getMermaid(): Promise<Mermaid | null> {
         suppressErrorRendering: true,
         theme: 'base',
         themeVariables: SLATE_THEME_VARIABLES,
+        pie: {
+          useMaxWidth: true,
+        },
         flowchart: {
           useMaxWidth: true,
           htmlLabels: true,
