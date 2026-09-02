@@ -19,6 +19,18 @@
         <div class="toast-content">
           <p class="toast-message">{item.message}</p>
         </div>
+        {#if item.action}
+          <button
+            type="button"
+            class="toast-action-btn"
+            onclick={() => {
+              item.action?.onClick();
+              toast.remove(item.id);
+            }}
+          >
+            {item.action.label}
+          </button>
+        {/if}
         <button
           type="button"
           class="toast-close"
@@ -122,6 +134,34 @@
     color: #0f172a;
     line-height: 1.4;
     word-break: break-word;
+  }
+
+  .toast-action-btn {
+    background: #0f172a;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.625rem;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 0.5rem;
+    flex-shrink: 0;
+    line-height: 1.25;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+
+  .toast-action-btn:hover {
+    background: #1e293b;
+  }
+
+  .toast-action-btn:active {
+    transform: scale(0.97);
+  }
+
+  .toast-action-btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
   }
 
   .toast-close {

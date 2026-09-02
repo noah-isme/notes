@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData, ActionData } from './$types';
-  import { goto } from '$app/navigation';
+  import { goto, beforeNavigate } from '$app/navigation';
   import { page } from '$app/stores';
   import { toast } from '$lib/stores/toast.svelte';
   import Toast from '$lib/components/Toast.svelte';
@@ -8,6 +8,7 @@
   import TagFilter from '$lib/components/TagFilter.svelte';
   import NoteList from '$lib/components/NoteList.svelte';
   import NoteEditor from '$lib/components/NoteEditor.svelte';
+  import UnsavedChangesDialog from '$lib/components/UnsavedChangesDialog.svelte';
   import type { NoteCardData } from '$lib/components/NoteCard.svelte';
   import {
     IconNote,
@@ -20,20 +21,126 @@
 
   // Active UI states
   let selectedNoteId = $state<string | null>(null);
+  let activeNote = $state<NoteCardData | null>(null);
+  let searchBarRef = $state<any>(null);
+  let editorViewMode = $state<'edit' | 'preview' | 'split'>('split');
   let isCreatingNew = $state(false);
+  let isFocusMode = $state(false);
   let mobileView = $state<'list' | 'editor'>('list');
   let isTagFilterOpenMobile = $state(false);
 
-  // Derived selected note object
+  // Soft-Delete pending timers map
+  let pendingDeleteTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  // Dirty & Navigation Guard state
+  let isEditorDirty = $state(false);
+  let editorRef = $state<any>(null);
+  let showUnsavedDialog = $state(false);
+  let isDialogSaving = $state(false);
+  let pendingAction = $state<(() => void | Promise<void>) | null>(null);
+  let pendingNavigationUrl = $state<string | null>(null);
+
+  async function handleGlobalKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      if (showUnsavedDialog) {
+        return;
+      }
+      if (isFocusMode) {
+        e.preventDefault();
+        isFocusMode = false;
+        return;
+      }
+      if (isTagFilterOpenMobile) {
+        e.preventDefault();
+        isTagFilterOpenMobile = false;
+        return;
+      }
+    }
+
+    const isModifier = e.metaKey || e.ctrlKey;
+    if (!isModifier) return;
+
+    const keyLower = e.key.toLowerCase();
+
+    // Cmd/Ctrl + K (Focus search)
+    if (!e.shiftKey && keyLower === 'k') {
+      e.preventDefault();
+      searchBarRef?.focus();
+      return;
+    }
+
+    // Cmd/Ctrl + N (New note)
+    if (!e.shiftKey && keyLower === 'n') {
+      e.preventDefault();
+      handleCreateNew();
+      return;
+    }
+
+    // Cmd/Ctrl + S (Save current note)
+    if (!e.shiftKey && keyLower === 's') {
+      e.preventDefault();
+      if (editorRef) {
+        if (isEditorDirty || isCreatingNew) {
+          try {
+            const result = await editorRef.submitSave();
+            if (result.success) {
+              toast.success('Note saved successfully');
+              isEditorDirty = false;
+              if (result.note?.id) {
+                selectedNoteId = result.note.id;
+                activeNote = result.note;
+                isCreatingNew = false;
+              }
+              await goto($page.url.toString(), { invalidateAll: true });
+            } else if (result.error) {
+              toast.error(result.error);
+            }
+          } catch {
+            toast.error('Failed to save note');
+          }
+        }
+      }
+      return;
+    }
+
+    // Cmd/Ctrl + Shift + P/E/S (Switch view modes)
+    if (e.shiftKey) {
+      if (keyLower === 'p') {
+        e.preventDefault();
+        editorViewMode = 'preview';
+        return;
+      }
+      if (keyLower === 'e') {
+        e.preventDefault();
+        editorViewMode = 'edit';
+        return;
+      }
+      if (keyLower === 's') {
+        e.preventDefault();
+        editorViewMode = 'split';
+        return;
+      }
+    }
+  }
+
+  // Derived selected note object (decoupled from search/tag list filtering)
   let selectedNote = $derived(
-    selectedNoteId ? data.notes.find((n) => n.id === selectedNoteId) ?? null : null
+    isCreatingNew
+      ? null
+      : (activeNote ?? (selectedNoteId ? data.notes.find((n) => n.id === selectedNoteId) ?? null : null))
   );
 
-  // If no note selected and we have notes, auto-select the first note on desktop
+  // Sync activeNote with data.notes updates
   $effect(() => {
-    if (!selectedNoteId && !isCreatingNew && data.notes.length > 0) {
+    if (selectedNoteId) {
+      const match = data.notes.find((n) => n.id === selectedNoteId);
+      if (match && !isEditorDirty) {
+        activeNote = match;
+      }
+    } else if (!isCreatingNew && data.notes.length > 0 && !activeNote) {
       if (typeof window !== 'undefined' && window.innerWidth >= 768) {
         selectedNoteId = data.notes[0].id;
+        activeNote = data.notes[0];
       }
     }
   });
@@ -72,31 +179,145 @@
     }))
   );
 
+  function confirmIfDirty(action: () => void | Promise<void>) {
+    if (isEditorDirty) {
+      pendingAction = action;
+      showUnsavedDialog = true;
+    } else {
+      action();
+    }
+  }
+
+  function handleDialogStay() {
+    showUnsavedDialog = false;
+    pendingAction = null;
+    pendingNavigationUrl = null;
+  }
+
+  function handleDialogDiscard() {
+    isEditorDirty = false;
+    showUnsavedDialog = false;
+    editorRef?.resetToBaseline();
+
+    const action = pendingAction;
+    const navUrl = pendingNavigationUrl;
+    pendingAction = null;
+    pendingNavigationUrl = null;
+
+    if (action) {
+      action();
+    } else if (navUrl) {
+      goto(navUrl);
+    }
+  }
+
+  async function handleDialogSave() {
+    if (!editorRef) return;
+    isDialogSaving = true;
+
+    try {
+      const result = await editorRef.submitSave();
+      if (result.success) {
+        toast.success('Note saved successfully');
+        isEditorDirty = false;
+        showUnsavedDialog = false;
+        if (result.note?.id) {
+          selectedNoteId = result.note.id;
+          activeNote = result.note;
+          isCreatingNew = false;
+        }
+        await goto($page.url.toString(), { invalidateAll: true });
+
+        const action = pendingAction;
+        const navUrl = pendingNavigationUrl;
+        pendingAction = null;
+        pendingNavigationUrl = null;
+
+        if (action) {
+          action();
+        } else if (navUrl) {
+          goto(navUrl);
+        }
+      } else {
+        toast.error(result.error || 'Failed to save note');
+      }
+    } catch {
+      toast.error('An error occurred while saving note');
+    } finally {
+      isDialogSaving = false;
+    }
+  }
+
+  // SvelteKit Route Transition Guard
+  beforeNavigate(({ cancel, to, willUnload }) => {
+    if (isEditorDirty && to && !willUnload && to.url.pathname !== $page.url.pathname) {
+      cancel();
+      pendingNavigationUrl = to.url.pathname + to.url.search + to.url.hash;
+      pendingAction = null;
+      showUnsavedDialog = true;
+    }
+  });
+
+  // Browser Tab / Window Close Guard
+  $effect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (isEditorDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  });
+
   // Client-side interactions
   function handleSelectNote(note: NoteCardData) {
-    selectedNoteId = note.id;
-    isCreatingNew = false;
-    mobileView = 'editor';
+    if (selectedNoteId === note.id && !isCreatingNew) {
+      mobileView = 'editor';
+      return;
+    }
+    confirmIfDirty(() => {
+      selectedNoteId = note.id;
+      activeNote = note;
+      isCreatingNew = false;
+      mobileView = 'editor';
+    });
   }
 
   function handleCreateNew() {
-    selectedNoteId = null;
-    isCreatingNew = true;
-    mobileView = 'editor';
+    if (isCreatingNew && !isEditorDirty) {
+      mobileView = 'editor';
+      return;
+    }
+    confirmIfDirty(() => {
+      selectedNoteId = null;
+      activeNote = null;
+      isCreatingNew = true;
+      mobileView = 'editor';
+    });
   }
 
   function handleCancelEditor() {
-    isCreatingNew = false;
-    if (data.notes.length > 0) {
-      selectedNoteId = data.notes[0].id;
-    } else {
-      selectedNoteId = null;
-    }
-    mobileView = 'list';
+    confirmIfDirty(() => {
+      isCreatingNew = false;
+      if (data.notes.length > 0) {
+        selectedNoteId = data.notes[0].id;
+        activeNote = data.notes[0];
+      } else {
+        selectedNoteId = null;
+        activeNote = null;
+      }
+      mobileView = 'list';
+    });
   }
 
   function handleBackToList() {
-    mobileView = 'list';
+    confirmIfDirty(() => {
+      mobileView = 'list';
+    });
   }
 
   // Filter updates
@@ -138,31 +359,90 @@
     }
   }
 
-  // Action handlers via form POST
-  async function handleDeleteNote(noteId: string) {
-    const formData = new FormData();
-    formData.append('id', noteId);
-
-    try {
-      const response = await fetch('?/delete', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        toast.success('Note deleted successfully');
-        if (selectedNoteId === noteId) {
-          selectedNoteId = null;
-          isCreatingNew = false;
-          mobileView = 'list';
-        }
-        await goto($page.url.toString(), { invalidateAll: true });
-      } else {
-        toast.error('Failed to delete note');
+  // Cleanup pending deletions on component unmount
+  $effect(() => {
+    return () => {
+      for (const [id, timer] of pendingDeleteTimers.entries()) {
+        clearTimeout(timer);
+        const formData = new FormData();
+        formData.append('id', id);
+        fetch('?/delete', { method: 'POST', body: formData }).catch(() => {});
       }
-    } catch {
-      toast.error('An error occurred while deleting note');
+      pendingDeleteTimers.clear();
+    };
+  });
+
+  // Action handlers via form POST
+  function handleDeleteNote(noteId: string) {
+    const noteToDelete = data.notes.find((n) => n.id === noteId);
+    if (!noteToDelete) return;
+
+    // 1. Snapshot previous notes and optimistically remove from visible list
+    const previousNotes = [...data.notes];
+    data.notes = data.notes.filter((n) => n.id !== noteId);
+
+    // 2. Adjust selection if the deleted note was open
+    if (selectedNoteId === noteId) {
+      if (data.notes.length > 0) {
+        selectedNoteId = data.notes[0].id;
+      } else {
+        selectedNoteId = null;
+        isCreatingNew = false;
+        mobileView = 'list';
+      }
     }
+    isFocusMode = false;
+
+    // 3. Clear any existing timer for this note if re-queued
+    const existingTimer = pendingDeleteTimers.get(noteId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      pendingDeleteTimers.delete(noteId);
+    }
+
+    // 4. Deferred 6-second timer to permanently commit deletion to backend
+    const timer = setTimeout(async () => {
+      pendingDeleteTimers.delete(noteId);
+      const formData = new FormData();
+      formData.append('id', noteId);
+
+      try {
+        const response = await fetch('?/delete', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          toast.error('Failed to permanently delete note');
+        }
+      } catch {
+        toast.error('Network error while deleting note');
+      }
+    }, 6000);
+
+    pendingDeleteTimers.set(noteId, timer);
+
+    // 5. Trigger Undo Toast notification
+    toast.showWithAction(
+      `Note "${noteToDelete.title}" deleted`,
+      {
+        label: 'Undo',
+        onClick: () => {
+          const activeTimer = pendingDeleteTimers.get(noteId);
+          if (activeTimer) {
+            clearTimeout(activeTimer);
+            pendingDeleteTimers.delete(noteId);
+          }
+          // Restore note to visible list and select it
+          data.notes = previousNotes;
+          selectedNoteId = noteToDelete.id;
+          mobileView = 'editor';
+          toast.success(`Note "${noteToDelete.title}" restored`);
+        },
+      },
+      'info',
+      6000
+    );
   }
 
   async function handleTogglePin(noteId: string, isPinned: boolean) {
@@ -192,7 +472,17 @@
   <title>Notes Workspace</title>
 </svelte:head>
 
+<svelte:window onkeydown={handleGlobalKeyDown} />
+
 <Toast />
+
+<UnsavedChangesDialog
+  isOpen={showUnsavedDialog}
+  isSaving={isDialogSaving}
+  onStay={handleDialogStay}
+  onDiscard={handleDialogDiscard}
+  onSave={handleDialogSave}
+/>
 
 <div class="app-dashboard-container">
   <!-- Mobile Navigation Toolbar (Shown only on small viewports) -->
@@ -214,7 +504,13 @@
         <IconTag size={13} />
         <span>{selectedTag ? `#${selectedTag.name}` : 'All Tags'}</span>
       </button>
-      <button type="button" class="btn-mobile-new-note" onclick={handleCreateNew}>
+      <button
+        type="button"
+        class="btn-mobile-new-note"
+        onclick={handleCreateNew}
+        title="New note (Cmd/Ctrl+N)"
+        aria-label="New note"
+      >
         <IconPlus size={14} />
         <span>New Note</span>
       </button>
@@ -234,7 +530,7 @@
     </div>
   {/if}
 
-  <div class="master-detail-layout {mobileView === 'editor' ? 'show-editor-mobile' : 'show-list-mobile'}">
+  <div class="master-detail-layout {isFocusMode ? 'focus-mode' : ''} {mobileView === 'editor' ? 'show-editor-mobile' : 'show-list-mobile'}">
     <!-- PANE 1: Desktop Left Sidebar (Filters, Tags, Stats) -->
     <aside class="pane-sidebar" aria-label="Filters and Tags">
       <div class="sidebar-block">
@@ -273,12 +569,19 @@
     <section class="pane-master-list" aria-label="Notes List">
       <div class="master-list-header">
         <SearchBar
+          bind:this={searchBarRef}
           value={data.filters?.search}
           placeholder="Search title & content..."
           onSearch={handleSearch}
           onClear={() => handleSearch('')}
         />
-        <button type="button" class="btn-create-header" onclick={handleCreateNew}>
+        <button
+          type="button"
+          class="btn-create-header"
+          onclick={handleCreateNew}
+          title="New note (Cmd/Ctrl+N)"
+          aria-label="New note"
+        >
           <IconPlus size={14} />
           <span>New Note</span>
         </button>
@@ -306,6 +609,10 @@
     <main class="pane-detail-workspace" aria-label="Note Editor Workspace">
       {#if isCreatingNew || selectedNote}
         <NoteEditor
+          bind:this={editorRef}
+          bind:isDirty={isEditorDirty}
+          bind:isFocusMode={isFocusMode}
+          bind:viewMode={editorViewMode}
           note={isCreatingNew ? null : selectedNote}
           isNew={isCreatingNew}
           formError={form?.error}
@@ -322,7 +629,12 @@
             <p class="no-selection-desc">
               Choose a note from the list on the left to view or edit, or create a new note to begin writing.
             </p>
-            <button type="button" class="btn-create-starter" onclick={handleCreateNew}>
+            <button
+              type="button"
+              class="btn-create-starter"
+              onclick={handleCreateNew}
+              title="New note (Cmd/Ctrl+N)"
+            >
               <IconPlus size={14} />
               <span>Create New Note</span>
             </button>
@@ -415,6 +727,23 @@
     gap: 1.25rem;
     align-items: start;
     height: calc(100vh - 120px);
+    transition: grid-template-columns 0.2s ease;
+  }
+
+  .master-detail-layout.focus-mode {
+    grid-template-columns: 1fr;
+  }
+
+  .master-detail-layout.focus-mode .pane-sidebar,
+  .master-detail-layout.focus-mode .pane-master-list {
+    display: none !important;
+  }
+
+  .master-detail-layout.focus-mode .pane-detail-workspace {
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+    height: 100%;
   }
 
   .pane-sidebar {

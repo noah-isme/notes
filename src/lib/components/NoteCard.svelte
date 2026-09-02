@@ -70,9 +70,7 @@
 
   function handleDelete(e: MouseEvent) {
     e.stopPropagation();
-    if (typeof window !== 'undefined' && window.confirm('Are you sure you want to delete this note?')) {
-      onDelete?.(note.id);
-    }
+    onDelete?.(note.id);
   }
 
   function handleTagClick(e: MouseEvent, tagName: string) {
@@ -177,8 +175,10 @@
     cursor: pointer;
     text-align: left;
     transition:
-      box-shadow 0.15s ease,
-      border-color 0.15s ease;
+      box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.15s ease,
+      background-color 0.15s ease;
     user-select: none;
     box-sizing: border-box;
     position: relative;
@@ -186,7 +186,8 @@
 
   .note-card:hover {
     border-color: #cbd5e1;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
   }
 
   .note-card:focus-visible {
@@ -216,6 +217,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.5rem;
+    min-width: 0;
   }
 
   .card-title {
@@ -228,6 +230,8 @@
     gap: 0.375rem;
     line-height: 1.35;
     word-break: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
     flex: 1;
   }
 
@@ -241,12 +245,15 @@
 
   .title-text {
     flex: 1;
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .card-actions {
     display: flex;
     align-items: center;
-    gap: 0.125rem;
+    gap: 0.25rem;
     flex-shrink: 0;
     opacity: 0.7;
     transition: opacity 0.15s ease;
@@ -261,18 +268,27 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 0.3125rem;
-    border-radius: 4px;
-    display: flex;
+    min-width: 32px;
+    min-height: 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 6px;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     color: #64748b;
-    transition: all 0.15s ease;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .action-btn:hover {
     background: #f1f5f9;
     color: #0f172a;
+  }
+
+  .action-btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
   }
 
   .pin-btn.active-pin {

@@ -14,19 +14,9 @@ import crypto from 'crypto';
  */
 export async function cleanDatabase(): Promise<void> {
   try {
-    // Delete in reverse foreign key order or truncate cascade
-    await db.execute(sql`TRUNCATE TABLE note_tags, notes, tags, sessions, users CASCADE;`);
+    await db.delete(users);
   } catch (error) {
-    // Fallback manual table deletion if TRUNCATE CASCADE permissions differ
-    try {
-      await db.delete(noteTags);
-      await db.delete(notes);
-      await db.delete(tags);
-      await db.delete(sessions);
-      await db.delete(users);
-    } catch (innerError) {
-      console.warn('Warning: cleanDatabase encountered an error during table cleanup:', innerError);
-    }
+    console.warn('Warning: cleanDatabase encountered an error during table cleanup:', error);
   }
 }
 

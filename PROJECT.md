@@ -1,79 +1,65 @@
-# Project: Mermaid.js Interactive Diagram Rendering in SvelteKit 2 Notes App
+# Project: SvelteKit 2 + Svelte 5 Notes UX Polish Pass
 
 ## Architecture
-- **Framework**: SvelteKit 2.16.1 / Svelte 5.19.7 (Runes: `$state`, `$derived`, `$props`, `$effect`), TypeScript 5.7.3, Vite, Tailwind CSS / Scoped CSS, `@sveltejs/adapter-vercel`.
-- **Parsing Strategy**: Isomorphic `src/lib/utils/markdown.ts` extracts ````mermaid` blocks and formats them into structured HTML containers with data attributes (`data-mermaid-code="..."`) and `<pre><code class="language-mermaid">` fallbacks.
-- **Engine Singleton**: Client-only dynamic module `src/lib/utils/mermaid.ts` loads `mermaid@^11.17.2` asynchronously when `browser` is true. Configured with `securityLevel: 'strict'`, `suppressErrorRendering: true`, and custom Slate design tokens.
-- **Interactive Component**: `src/lib/components/MermaidDiagram.svelte` mounts on diagram containers, performs debounced SVG rendering, renders toolbar actions (Copy Source, Copy SVG, Fullscreen modal trigger, Code toggle), provides an accessible WAI-ARIA zoom/pan modal, and handles syntax errors inline with fallback raw code.
-- **Integration Points**: `src/lib/components/NoteEditor.svelte` (edit, split, preview modes) and note detail views (`MarkdownViewer.svelte`).
+- **Framework**: SvelteKit 2.50+ with Svelte 5.50+ runes (`$state`, `$derived`, `$props`, `$effect`, `$derived.by`).
+- **Database & Backend**: Drizzle ORM + PostgreSQL + SvelteKit server actions (`+page.server.ts`).
+- **Layout Architecture**: 3-pane responsive layout (`src/routes/(app)/+page.svelte`):
+  1. `pane-sidebar`: Tag navigation & system views.
+  2. `pane-master-list`: Note search, active tag header, and note cards list (`NoteList.svelte`, `NoteCard.svelte`).
+  3. `pane-detail-editor`: Note editor, toolbar, segmented view controls, and markdown/mermaid preview (`NoteEditor.svelte`, `MarkdownViewer.svelte`, `MermaidDiagram.svelte`).
+- **Notification Subsystem**: Reactive Toast store (`src/lib/stores/toast.svelte.ts`) with interactive action handlers (`[Undo]`).
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Fenced Code Block Detection | Parse ````mermaid` fenced code blocks in markdown without breaking standard code blocks or existing HTML sanitization | M1 | ORIGINAL_REQUEST R1 |
-| 2 | Client-Side Async Loading (SSR Safe) | Dynamically import and initialize Mermaid.js on client side only, preventing SSR / Node crashes on Vercel adapter | M1 | ORIGINAL_REQUEST R1 |
-| 3 | Core Diagram Types Support | Render flowcharts, sequence, class, state, ER diagrams, Gantt charts, mindmaps, git graphs to responsive SVG | M1 | ORIGINAL_REQUEST R1 |
-| 4 | Clean Slate Design Synchronization | Apply neutral slate theme variables (`#0f172a`, `#f8fafc`, `#e2e8f0`, `#2563eb`) to Mermaid diagrams | M1 | ORIGINAL_REQUEST R3 |
-| 5 | Runes Warnings Remediation | Resolve the 6 `state_referenced_locally` warnings in `NoteEditor.svelte` and `SearchBar.svelte` for 0 warnings `pnpm check` | M1 | ORIGINAL_REQUEST R4 |
-| 6 | Action Buttons (Copy Source & Copy SVG) | Copy raw mermaid source text or exported SVG XML to clipboard with visual feedback | M2 | ORIGINAL_REQUEST R3 |
-| 7 | Fullscreen / Zoom Preview Modal | WAI-ARIA accessible modal dialog with interactive pan/zoom (0.25x-4.0x), reset, and keyboard navigation | M2 | ORIGINAL_REQUEST R3 |
-| 8 | Resilient Error Boundary UI | Gracefully catch syntax errors without throwing; display inline error banner + toggleable fallback raw code | M2 | ORIGINAL_REQUEST R2 |
-| 9 | Clean SVG Icon Set | Accessible SVG icons for copy, maximize, zoom in, zoom out, reset, code toggle, and download | M2 | ORIGINAL_REQUEST R3 |
-| 10 | Live Preview Integration & Debouncing | Real-time preview in `NoteEditor.svelte` (preview/split views) and note detail views with 200ms debounce | M3 | ORIGINAL_REQUEST R2 |
-| 11 | Comprehensive Vitest & Build Verification | Unit & integration tests covering all features, Tiers 1-4 passing 100%, 0 warnings on `pnpm check`, clean build | M4 | ORIGINAL_REQUEST R4 |
-| 12 | Adversarial Hardening (Tier 5) | Stress test edge cases (malformed syntax, extreme sizes, concurrent re-renders, XSS vectors) | M4 | ORIGINAL_REQUEST R4 |
+| F1.1 | Editor Prose Wrapping | Editor textarea standard prose wraps cleanly (`white-space: pre-wrap; overflow-wrap: break-word; tab-size: 2;`) | M1 | R1 |
+| F1.2 | Code Block Horizontal Scrolling | Fenced code blocks & diagrams preserve whitespace (`white-space: pre; overflow-x: auto; word-break: normal;`) without mangling formatting | M1 | R1 |
+| F1.3 | Monospace Typography | High-legibility font stack (`ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace`), ~14px font size, 1.6 line height | M1 | R1 |
+| F1.4 | Reactive Dirty State Indicator | Reactive dirty tracking displaying `● Unsaved changes` badge and visual highlight on Save button | M1 | R1 |
+| F1.5 | Unsaved Changes Navigation Guard | Confirmation dialog with `[Stay]`, `[Discard]`, `[Save]` guarding note switching, route navigation, and tab unload | M1 | R1 |
+| F2.1 | Segmented View Mode Controls | Accessible segmented control for `[ Edit | Split | Preview ]` with clear active indicator and ARIA roles | M2 | R2 |
+| F2.2 | Editor Focus / Fullscreen Mode | Focus mode (`⛶`) collapsing sidebars into distraction-free canvas, escapable via button or `Esc` | M2 | R2 |
+| F2.3 | Soft-Delete with Undo Toast | Immediate soft-delete with 6-second deferred timer and interactive Toast `[Undo]` button | M2 | R2 |
+| F3.1 | Note Card Hitboxes & Elevation | Expand action icon hitboxes to ≥32×32px, subtle hover elevations and smooth transitions | M3 | R3 |
+| F3.2 | Card Actions Overflow Protection | Flex layout overflow safety (`min-width: 0` on title) and clean action grouping | M3 | R3 |
+| F3.3 | Tag Filters & Input Polish | High-contrast active tag chip, clear placeholder, and keyboard tag chip management (Enter/Backspace/Delete) | M3 | R3 |
+| F3.4 | Illustrated Empty States | 3 dedicated empty states: No notes yet (`+ New Note`), No search results (`Try another search term`), and No notes tagged with `#tag` | M3 | R3 |
+| F4.1 | Global Keyboard Shortcuts & Tooltips | `Cmd/Ctrl+K` (Search), `Cmd/Ctrl+N` (New note), `Cmd/Ctrl+S` (Save), `Esc` (Exit focus/modal), `Cmd/Ctrl+Shift+P/E/S` (View modes) with tooltips | M4 | R4 |
+| F4.2 | Subtle Diagram Hover Toolbar | Mermaid action toolbar made subtle / hover-activated during preview mode | M4 | R4 |
+| F4.3 | Navigation vs Document State Decoupling | Decouple search/tag list filtering from active editor note selection to prevent losing active note context | M4 | R4 |
+| F5.1 | E2E Test Suite (Tiers 1-4) | Comprehensive opaque-box test suite verifying all UX features across all tiers | M5 | E2E Track |
+| F5.2 | Adversarial Hardening (Tier 5) | White-box edge-case and stress tests | M5 | E2E Track |
+| F5.3 | Final Quality Verification | `pnpm check` (0 errors/warnings), `pnpm test` (100% pass), `pnpm build` clean bundle | M5 | Verification |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| T-E2E | E2E Testing Track | Design & implement comprehensive opaque-box E2E test suite (Tiers 1-4) | none | DONE (105 tests) |
-| M1 | Engine & Markdown Integration | Install `mermaid`, create `src/lib/utils/mermaid.ts`, update `markdown.ts`, fix runes warnings | none | DONE |
-| M2 | UI Controls, Icons & Error Boundary | Create icon set, `src/lib/components/MermaidDiagram.svelte`, zoom modal, copy handlers, error boundary | M1 | DONE |
-| M3 | NoteEditor & Live Preview Integration | Wire `MermaidDiagram` into `NoteEditor.svelte` and note views with 200ms debouncing | M2 | DONE |
-| M4 | Final Milestone (E2E Pass & Hardening) | Pass 100% E2E tests, Tier 5 adversarial testing, verify 0 errors/warnings `pnpm check`, clean build | T-E2E, M3 | DONE (358 tests) |
+| M1 | Editor Ergonomics & Dirty State | F1.1, F1.2, F1.3, F1.4, F1.5 (`NoteEditor.svelte`, `MarkdownViewer.svelte`, `+page.svelte`) | none | DONE |
+| M2 | View Modes, Focus Mode & Undo UX | F2.1, F2.2, F2.3 (`NoteEditor.svelte`, `Toast.svelte`, `toast.svelte.ts`, `+page.svelte`, `+page.server.ts`) | M1 | DONE |
+| M3 | Cards, Tags & Illustrated Empty States | F3.1, F3.2, F3.3, F3.4 (`NoteCard.svelte`, `TagFilter.svelte`, `NoteList.svelte`, `+page.svelte`) | M2 | PLANNED |
+| M4 | Keyboard Shortcuts, Diagram Polish & Context State | F4.1, F4.2, F4.3 (`+page.svelte`, `MermaidDiagram.svelte`, `NoteEditor.svelte`) | M3 | PLANNED |
+| M5 | E2E Integration & Quality Gates | F5.1, F5.2, F5.3 (Tiers 1-4 100% pass, Tier 5 hardening, pnpm check/test/build) | M1, M2, M3, M4 | PLANNED |
 
 ## Interface Contracts
-### `src/lib/utils/mermaid.ts`
-```typescript
-export interface MermaidRenderResult {
-  svg: string;
-  bindFunctions?: (element: Element) => void;
-}
+### NoteEditor ↔ Dashboard Navigation (+page.svelte)
+- `isDirty`: boolean exposed or managed with confirmation interceptor when switching `activeNoteId`.
+- `focusMode`: boolean state toggled in `NoteEditor` and bound to layout container class `.master-detail-layout.focus-mode`.
+- `onSave`: async function returning boolean or resolving on successful persistence.
+- `onDelete`: triggers soft-delete flow with toast action undo.
 
-export interface MermaidRenderError {
-  message: string;
-  str?: string;
-  hash?: any;
-}
-
-export function isMermaidSupported(): boolean;
-export function initializeMermaid(theme?: 'slate' | 'default'): Promise<any>;
-export function renderMermaidSvg(id: string, code: string): Promise<{ svg: string; bindFunctions?: (element: Element) => void } | { error: string }>;
-export function parseMermaidSyntax(code: string): Promise<{ valid: boolean; error?: string }>;
-```
-
-### `src/lib/components/MermaidDiagram.svelte`
-```typescript
-interface Props {
-  code: string;
-  id?: string;
-  title?: string;
-  showControls?: boolean;
-}
-```
+### Toast Store (toast.svelte.ts)
+- `show(message: string, type: 'info' | 'success' | 'warning' | 'error', options?: { duration?: number, action?: { label: string, onClick: () => void } }): string`
+- `dismiss(id: string): void`
 
 ## Code Layout
-- `src/lib/utils/mermaid.ts`: Mermaid client singleton, configuration, and rendering service.
-- `src/lib/utils/markdown.ts`: Isomorphic markdown parser with mermaid block detection.
-- `src/lib/actions/mermaid.ts`: Svelte 5 action for mounting and hydrating MermaidDiagram instances.
-- `src/lib/components/MermaidDiagram.svelte`: Interactive diagram component with toolbar, error boundary, and zoom modal.
-- `src/lib/components/MarkdownViewer.svelte`: Reusable markdown preview component.
-- `src/lib/components/icons/`:
-  - `IconCopy.svelte`, `IconMaximize.svelte`, `IconZoomIn.svelte`, `IconZoomOut.svelte`, `IconRotateCcw.svelte`, `IconCode.svelte`, `IconDownload.svelte`, `IconCheck.svelte`, `IconAlertCircle.svelte`.
-- `src/lib/components/NoteEditor.svelte`: Note editor with debounced live preview and diagram integration.
-- `tests/unit/mermaid.test.ts`: Unit tests for engine service, parsing, and error handling.
-- `tests/unit/mermaid-components.test.ts`: Component rendering, action buttons, and modal dialog tests.
-- `tests/unit/mermaid-editor.test.ts`: NoteEditor live preview, debouncing, and view mode tests.
-- `tests/unit/mermaid-e2e.test.ts`: Comprehensive E2E test suite covering Tiers 1-4 (105 tests).
-- `tests/unit/mermaid-adversarial.test.ts`: Tier 5 engine adversarial stress and resilience tests (36 tests).
-- `tests/unit/mermaid-adversarial-ui.test.ts`: Tier 5 UI interaction and boundary stress tests (30 tests).
+- `src/lib/components/NoteEditor.svelte`: Note editor, view controls, dirty indicator, focus mode toggle, markdown textarea.
+- `src/lib/components/MarkdownViewer.svelte`: Rendered markdown viewer with code block horizontal scroll and font styles.
+- `src/lib/components/MermaidDiagram.svelte`: Mermaid diagram renderer and hover-activated toolbar.
+- `src/lib/components/NoteCard.svelte`: Note card item with expanded interactive hitboxes, hover elevation, and overflow handling.
+- `src/lib/components/NoteList.svelte`: Master notes list with dedicated illustrated empty states.
+- `src/lib/components/TagFilter.svelte`: Tag list sidebar with active highlight and tag input keyboard management.
+- `src/lib/components/Toast.svelte`: Toast container with interactive action button.
+- `src/lib/stores/toast.svelte.ts`: Toast reactive state with action support.
+- `src/routes/(app)/+page.svelte`: Root dashboard layout, keyboard shortcuts, navigation guards, focus mode layout class, and state decoupling.
+- `tests/unit/`: Unit test suite (Vitest).
+- `tests/e2e/`: E2E test suite.

@@ -15,6 +15,7 @@
     IconTrash,
     IconAlert,
     IconClose,
+    IconMaximize,
   } from './icons';
 
   export interface NoteEditorData {
@@ -30,6 +31,9 @@
     isNew?: boolean;
     formError?: string | null;
     isSubmitting?: boolean;
+    isDirty?: boolean;
+    isFocusMode?: boolean;
+    viewMode?: 'edit' | 'preview' | 'split';
     onSave?: (data: {
       id?: string;
       title: string;
@@ -39,6 +43,8 @@
     }) => void;
     onCancel?: () => void;
     onDelete?: (noteId: string) => void;
+    onDirtyChange?: (isDirty: boolean) => void;
+    onToggleFocusMode?: () => void;
   }
 
   let {
@@ -46,9 +52,14 @@
     isNew = false,
     formError = null,
     isSubmitting = false,
+    isDirty = $bindable(false),
+    isFocusMode = $bindable(false),
+    viewMode = $bindable<'edit' | 'preview' | 'split'>('split'),
     onSave,
     onCancel,
     onDelete,
+    onDirtyChange,
+    onToggleFocusMode,
   }: NoteEditorProps = $props();
 
   let title = $state(getPropValue(() => note?.title ?? ''));
@@ -57,16 +68,36 @@
   let isPinned = $state(getPropValue(() => note?.isPinned ?? false));
   let tagList = $state<string[]>(getPropValue(() => (note?.tags ? note.tags.map((t) => t.name) : [])));
   let tagInput = $state('');
-  let viewMode = $state<'edit' | 'preview' | 'split'>('split');
   let titleTouched = $state(false);
+
+  // Baseline snapshots for change detection
+  let initialTitle = $state(getPropValue(() => note?.title ?? ''));
+  let initialContent = $state(getPropValue(() => note?.content ?? ''));
+  let initialIsPinned = $state(getPropValue(() => note?.isPinned ?? false));
+  let initialTagList = $state<string[]>(getPropValue(() => (note?.tags ? note.tags.map((t) => t.name) : [])));
+
+  function areTagListsEqual(a: string[], b: string[]): boolean {
+    if (a.length !== b.length) return false;
+    const sortedA = [...a].sort();
+    const sortedB = [...b].sort();
+    return sortedA.every((tag, i) => tag === sortedB[i]);
+  }
 
   // Sync props when selected note changes
   $effect(() => {
-    title = note?.title ?? '';
-    content = note?.content ?? '';
-    debouncedContent = note?.content ?? '';
-    isPinned = note?.isPinned ?? false;
-    tagList = note?.tags ? note.tags.map((t) => t.name) : [];
+    const currentNote = note;
+    const currentIsNew = isNew;
+
+    initialTitle = currentNote?.title ?? '';
+    initialContent = currentNote?.content ?? '';
+    initialIsPinned = currentNote?.isPinned ?? false;
+    initialTagList = currentNote?.tags ? currentNote.tags.map((t) => t.name) : [];
+
+    title = initialTitle;
+    content = initialContent;
+    debouncedContent = initialContent;
+    isPinned = initialIsPinned;
+    tagList = [...initialTagList];
     tagInput = '';
     titleTouched = false;
   });
@@ -82,6 +113,100 @@
       clearTimeout(timer);
     };
   });
+
+  // Reactive dirty derived computation
+  let isDirtyDerived = $derived.by(() => {
+    if (isNew) {
+      return (
+        title.trim().length > 0 ||
+        content.trim().length > 0 ||
+        tagList.length > 0 ||
+        isPinned
+      );
+    }
+    const titleChanged = title !== initialTitle;
+    const contentChanged = content !== initialContent;
+    const pinChanged = isPinned !== initialIsPinned;
+    const tagsChanged = !areTagListsEqual(tagList, initialTagList);
+
+    return titleChanged || contentChanged || pinChanged || tagsChanged;
+  });
+
+  // Sync dirty state to bindable prop and notify callback
+  $effect(() => {
+    const currentDirty = isDirtyDerived;
+    isDirty = currentDirty;
+    onDirtyChange?.(currentDirty);
+  });
+
+  // Public methods callable via bind:this
+  export function getEditorData() {
+    return {
+      id: note?.id,
+      title: title.trim(),
+      content,
+      isPinned,
+      tags: tagList,
+      isDirty: isDirtyDerived,
+      isValid: isTitleValid,
+    };
+  }
+
+  export async function submitSave(): Promise<{ success: boolean; error?: string; note?: any }> {
+    titleTouched = true;
+    if (!isTitleValid) {
+      return { success: false, error: 'Title is required (1-200 characters)' };
+    }
+
+    const formData = new FormData();
+    if (note?.id && !isNew) {
+      formData.append('id', note.id);
+    }
+    formData.append('title', title.trim());
+    formData.append('content', content);
+    formData.append('isPinned', isPinned ? 'true' : 'false');
+    formData.append('tags', tagList.join(', '));
+
+    try {
+      const action = note?.id && !isNew ? '?/update' : '?/create';
+      const response = await fetch(action, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        initialTitle = title.trim();
+        initialContent = content;
+        initialIsPinned = isPinned;
+        initialTagList = [...tagList];
+        let savedNote: any = null;
+        try {
+          const resJson = await response.json();
+          if (resJson?.note) {
+            savedNote = resJson.note;
+          } else if (resJson?.data) {
+            const dataObj = typeof resJson.data === 'string' ? JSON.parse(resJson.data) : resJson.data;
+            savedNote = dataObj?.note;
+          }
+        } catch {}
+        return { success: true, note: savedNote };
+      } else {
+        const result = await response.json().catch(() => null);
+        return { success: false, error: result?.error || 'Failed to save note' };
+      }
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Network error while saving' };
+    }
+  }
+
+  export function resetToBaseline() {
+    title = initialTitle;
+    content = initialContent;
+    isPinned = initialIsPinned;
+    tagList = [...initialTagList];
+    tagInput = '';
+    titleTouched = false;
+  }
 
   let renderedPreview = $derived(renderMarkdown(debouncedContent));
   let titleCharCount = $derived(title.length);
@@ -132,11 +257,36 @@
     }
   }
 
+  const viewModes: Array<'edit' | 'split' | 'preview'> = ['edit', 'split', 'preview'];
+
+  function handleViewModeKeyDown(e: KeyboardEvent) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const idx = viewModes.indexOf(viewMode);
+      const nextIdx = (idx + 1) % viewModes.length;
+      viewMode = viewModes[nextIdx];
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const idx = viewModes.indexOf(viewMode);
+      const prevIdx = (idx - 1 + viewModes.length) % viewModes.length;
+      viewMode = viewModes[prevIdx];
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      viewMode = 'edit';
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      viewMode = 'preview';
+    }
+  }
+
+  function handleToggleFocus() {
+    isFocusMode = !isFocusMode;
+    onToggleFocusMode?.();
+  }
+
   function handleDelete() {
     if (note?.id && onDelete) {
-      if (typeof window !== 'undefined' && window.confirm('Are you sure you want to delete this note?')) {
-        onDelete(note.id);
-      }
+      onDelete(note.id);
     }
   }
 </script>
@@ -183,6 +333,13 @@
       </div>
 
       <div class="top-controls">
+        {#if isDirtyDerived}
+          <span class="unsaved-badge" role="status" aria-label="Unsaved changes">
+            <span class="unsaved-dot" aria-hidden="true">●</span>
+            <span>Unsaved changes</span>
+          </span>
+        {/if}
+
         <label class="pin-toggle-btn {isPinned ? 'pinned' : ''}" title={isPinned ? 'Unpin note' : 'Pin note'}>
           <input
             type="checkbox"
@@ -195,41 +352,68 @@
         </label>
 
         <!-- View Mode Switcher -->
-        <div class="view-mode-tabs" role="tablist" aria-label="Editor View Modes">
+        <div
+          class="view-mode-tabs segmented-control"
+          role="tablist"
+          aria-label="Editor View Modes"
+        >
           <button
             type="button"
-            class="mode-btn {viewMode === 'edit' ? 'active' : ''}"
+            class="mode-btn {viewMode === 'edit' ? 'active' : ''} btn-segmented"
             onclick={() => (viewMode = 'edit')}
+            onkeydown={handleViewModeKeyDown}
             role="tab"
             aria-selected={viewMode === 'edit'}
+            tabindex={viewMode === 'edit' ? 0 : -1}
             title="Edit mode"
+            data-testid="mode-edit"
           >
             <IconEdit size={13} />
             <span>Edit</span>
           </button>
           <button
             type="button"
-            class="mode-btn {viewMode === 'split' ? 'active' : ''}"
+            class="mode-btn {viewMode === 'split' ? 'active' : ''} btn-segmented"
             onclick={() => (viewMode = 'split')}
+            onkeydown={handleViewModeKeyDown}
             role="tab"
             aria-selected={viewMode === 'split'}
+            tabindex={viewMode === 'split' ? 0 : -1}
             title="Split mode"
+            data-testid="mode-split"
           >
             <IconSplit size={13} />
             <span>Split</span>
           </button>
           <button
             type="button"
-            class="mode-btn {viewMode === 'preview' ? 'active' : ''}"
+            class="mode-btn {viewMode === 'preview' ? 'active' : ''} btn-segmented"
             onclick={() => (viewMode = 'preview')}
+            onkeydown={handleViewModeKeyDown}
             role="tab"
             aria-selected={viewMode === 'preview'}
+            tabindex={viewMode === 'preview' ? 0 : -1}
             title="Preview mode"
+            data-testid="mode-preview"
           >
             <IconEye size={13} />
             <span>Preview</span>
           </button>
         </div>
+
+        <!-- Focus / Fullscreen Mode Toggle -->
+        <button
+          type="button"
+          class="focus-toggle-btn {isFocusMode ? 'active' : ''}"
+          onclick={handleToggleFocus}
+          title={isFocusMode ? 'Exit focus mode (Esc)' : 'Enter focus mode'}
+          aria-label={isFocusMode ? 'Exit focus mode' : 'Enter focus mode'}
+          aria-pressed={isFocusMode}
+          data-testid="toggle-focus-mode"
+        >
+          <IconMaximize size={13} />
+          <span>{isFocusMode ? 'Exit Focus' : 'Focus'}</span>
+        </button>
       </div>
     </div>
 
@@ -329,8 +513,10 @@
 
         <button
           type="submit"
-          class="btn-primary"
+          class="btn-primary {isDirtyDerived ? 'is-dirty' : ''}"
           disabled={isSubmitting || (titleTouched && !isTitleValid)}
+          title={note?.id && !isNew ? 'Save changes (Cmd/Ctrl+S)' : 'Save note (Cmd/Ctrl+S)'}
+          aria-label={note?.id && !isNew ? 'Save changes' : 'Save note'}
         >
           {isSubmitting
             ? 'Saving...'
@@ -431,6 +617,38 @@
     gap: 0.75rem;
   }
 
+  .unsaved-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #b45309;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 9999px;
+    white-space: nowrap;
+    animation: fadeInBadge 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .unsaved-dot {
+    font-size: 0.625rem;
+    color: #f59e0b;
+    line-height: 1;
+  }
+
+  @keyframes fadeInBadge {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   .pin-toggle-btn {
     display: inline-flex;
     align-items: center;
@@ -473,33 +691,77 @@
     background: #f1f5f9;
     padding: 0.1875rem;
     border-radius: 6px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
+    gap: 2px;
+    align-items: center;
   }
 
   .mode-btn {
     display: inline-flex;
     align-items: center;
     gap: 0.3125rem;
-    background: none;
-    border: none;
+    background: transparent;
+    border: 1px solid transparent;
     padding: 0.25rem 0.625rem;
     font-size: 0.8125rem;
     font-weight: 500;
     color: #64748b;
     border-radius: 4px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
   }
 
   .mode-btn:hover {
     color: #1e293b;
+    background: rgba(255, 255, 255, 0.5);
   }
 
   .mode-btn.active {
     background: #ffffff;
     color: #0f172a;
     font-weight: 600;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow:
+      0 1px 3px rgba(15, 23, 42, 0.1),
+      0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+
+  .mode-btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+  }
+
+  .focus-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .focus-toggle-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .focus-toggle-btn.active {
+    background: #eff6ff;
+    border-color: #2563eb;
+    color: #1d4ed8;
+    font-weight: 600;
+  }
+
+  .focus-toggle-btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
   }
 
   .tags-manager-row {
@@ -593,6 +855,7 @@
     height: 100%;
     overflow-y: auto;
     box-sizing: border-box;
+    min-width: 0;
   }
 
   .editor-pane {
@@ -612,10 +875,13 @@
     border: none;
     outline: none;
     resize: none;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
+    font-family: ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
     font-size: 0.875rem;
     line-height: 1.6;
+    tab-size: 2;
+    -moz-tab-size: 2;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
     color: #0f172a;
     background: #ffffff;
     box-sizing: border-box;
@@ -638,6 +904,7 @@
     line-height: 1.6;
     color: #1e293b;
     word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   :global(.markdown-preview h1) {
@@ -682,9 +949,10 @@
     background: #f1f5f9;
     padding: 0.125rem 0.375rem;
     border-radius: 4px;
-    font-family: ui-monospace, monospace;
+    font-family: ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
     font-size: 0.8125rem;
     color: #0f172a;
+    word-break: break-word;
   }
 
   :global(.markdown-preview pre) {
@@ -692,7 +960,19 @@
     color: #f8fafc;
     padding: 0.875rem 1rem;
     border-radius: 6px;
+    max-width: 100%;
     overflow-x: auto;
+    white-space: pre;
+    word-break: normal;
+    word-wrap: normal;
+    overflow-wrap: normal;
+    tab-size: 2;
+    -moz-tab-size: 2;
+    font-family: ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
     margin: 0.75rem 0;
   }
 
@@ -700,7 +980,33 @@
     background: transparent;
     color: inherit;
     padding: 0;
-    font-size: 0.8125rem;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    white-space: pre;
+    word-break: normal;
+    word-wrap: normal;
+    overflow-wrap: normal;
+    display: block;
+    min-width: 100%;
+  }
+
+  :global(.markdown-preview pre::-webkit-scrollbar) {
+    height: 6px;
+  }
+
+  :global(.markdown-preview pre::-webkit-scrollbar-track) {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+  }
+
+  :global(.markdown-preview pre::-webkit-scrollbar-thumb) {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  :global(.markdown-preview pre::-webkit-scrollbar-thumb:hover) {
+    background: rgba(255, 255, 255, 0.35);
   }
 
   :global(.markdown-preview blockquote) {
@@ -757,11 +1063,22 @@
     font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
   }
 
   .btn-primary:hover:not(:disabled) {
     background: #1d4ed8;
+  }
+
+  .btn-primary.is-dirty {
+    background: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    font-weight: 700;
+  }
+
+  .btn-primary.is-dirty:hover:not(:disabled) {
+    background: #1d4ed8;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35), 0 2px 4px 0 rgba(0, 0, 0, 0.1);
   }
 
   .btn-primary:disabled {

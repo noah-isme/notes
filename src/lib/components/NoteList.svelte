@@ -1,6 +1,6 @@
 <script lang="ts">
   import NoteCard, { type NoteCardData } from './NoteCard.svelte';
-  import { IconPin, IconNote, IconSearch, IconPlus } from './icons';
+  import { IconPin, IconNote, IconSearch, IconPlus, IconTag } from './icons';
 
   interface NoteListProps {
     notes: NoteCardData[];
@@ -42,7 +42,11 @@
     <div class="empty-state">
       {#if isFiltered}
         <div class="empty-icon-wrapper">
-          <IconSearch size={28} />
+          {#if searchQuery}
+            <IconSearch size={28} />
+          {:else}
+            <IconTag size={28} />
+          {/if}
         </div>
         <h4 class="empty-title">No notes found</h4>
         <p class="empty-desc">
@@ -69,7 +73,13 @@
         <h4 class="empty-title">No notes yet</h4>
         <p class="empty-desc">Create your first note to get started organizing your thoughts.</p>
         {#if onCreateNew}
-          <button type="button" class="btn-create-empty" onclick={onCreateNew}>
+          <button
+            type="button"
+            class="btn-create-empty"
+            onclick={onCreateNew}
+            title="New note (Cmd/Ctrl+N)"
+            aria-label="Create New Note"
+          >
             <IconPlus size={14} />
             <span>Create New Note</span>
           </button>

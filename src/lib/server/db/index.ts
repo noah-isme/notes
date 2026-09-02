@@ -16,13 +16,13 @@ declare global {
 
 const maxConnections = process.env.DB_MAX_CONNECTIONS
   ? parseInt(process.env.DB_MAX_CONNECTIONS, 10)
-  : 10;
+  : 5;
 
 function createClient(): postgres.Sql {
   return postgres(connectionString, {
     prepare: false, // Essential for PgBouncer / serverless transaction pooling
-    max: maxConnections,
-    idle_timeout: 20, // Disconnect idle clients after 20s
+    max: process.env.NODE_ENV === 'test' ? 2 : maxConnections,
+    idle_timeout: process.env.NODE_ENV === 'test' ? 1 : 10,
     connect_timeout: 10, // Timeout connection attempts after 10s
     onnotice: () => {}, // Suppress notice messages
   });

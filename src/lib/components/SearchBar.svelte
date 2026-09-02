@@ -46,6 +46,13 @@
     return () => clearTimeout(timer);
   });
 
+  let inputRef = $state<HTMLInputElement | null>(null);
+
+  export function focus() {
+    inputRef?.focus();
+    inputRef?.select();
+  }
+
   function handleInput(e: Event) {
     const target = e.target as HTMLInputElement;
     inputValue = target.value;
@@ -69,6 +76,7 @@
     <IconSearch size={15} />
   </span>
   <input
+    bind:this={inputRef}
     type="text"
     class="search-input"
     {placeholder}
@@ -76,6 +84,7 @@
     oninput={handleInput}
     onkeydown={handleKeyDown}
     aria-label="Search notes"
+    title="Search notes (Cmd/Ctrl+K)"
   />
   {#if inputValue.length > 0}
     <button

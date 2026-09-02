@@ -529,13 +529,16 @@
     border-radius: 6px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    opacity: 0.85;
+    opacity: 0;
+    pointer-events: none;
     transition: opacity 0.2s ease, box-shadow 0.2s ease;
   }
 
   .mermaid-diagram-container:hover .diagram-toolbar,
+  .mermaid-diagram-container:focus-within .diagram-toolbar,
   .diagram-toolbar:focus-within {
     opacity: 1;
+    pointer-events: auto;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 

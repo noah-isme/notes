@@ -7,5 +7,7 @@ export default defineConfig({
     include: ['tests/**/*.{test,spec}.{js,ts}'],
     globals: true,
     environment: 'node',
+    fileParallelism: false,
+    maxConcurrency: 1,
   },
 });

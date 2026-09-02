@@ -33,6 +33,7 @@
     line-height: 1.6;
     color: #1e293b;
     word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   :global(.markdown-viewer h1) {
@@ -77,9 +78,10 @@
     background: #f1f5f9;
     padding: 0.125rem 0.375rem;
     border-radius: 4px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
     font-size: 0.8125rem;
     color: #0f172a;
+    word-break: break-word;
   }
 
   :global(.markdown-viewer pre) {
@@ -87,7 +89,19 @@
     color: #f8fafc;
     padding: 0.875rem 1rem;
     border-radius: 6px;
+    max-width: 100%;
     overflow-x: auto;
+    white-space: pre;
+    word-break: normal;
+    word-wrap: normal;
+    overflow-wrap: normal;
+    tab-size: 2;
+    -moz-tab-size: 2;
+    font-family: ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
     margin: 0.75rem 0;
   }
 
@@ -95,7 +109,33 @@
     background: transparent;
     color: inherit;
     padding: 0;
-    font-size: 0.8125rem;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    white-space: pre;
+    word-break: normal;
+    word-wrap: normal;
+    overflow-wrap: normal;
+    display: block;
+    min-width: 100%;
+  }
+
+  :global(.markdown-viewer pre::-webkit-scrollbar) {
+    height: 6px;
+  }
+
+  :global(.markdown-viewer pre::-webkit-scrollbar-track) {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+  }
+
+  :global(.markdown-viewer pre::-webkit-scrollbar-thumb) {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  :global(.markdown-viewer pre::-webkit-scrollbar-thumb:hover) {
+    background: rgba(255, 255, 255, 0.35);
   }
 
   :global(.markdown-viewer blockquote) {
