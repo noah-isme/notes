@@ -123,24 +123,31 @@
     }
   }
 
+  // Reactive local notes array (decoupled from direct prop mutation in Svelte 5)
+  let localNotes = $state<NoteCardData[]>([]);
+
+  $effect(() => {
+    localNotes = data.notes;
+  });
+
   // Derived selected note object (decoupled from search/tag list filtering)
   let selectedNote = $derived(
     isCreatingNew
       ? null
-      : (activeNote ?? (selectedNoteId ? data.notes.find((n) => n.id === selectedNoteId) ?? null : null))
+      : (activeNote ?? (selectedNoteId ? localNotes.find((n) => n.id === selectedNoteId) ?? null : null))
   );
 
-  // Sync activeNote with data.notes updates
+  // Sync activeNote with localNotes updates
   $effect(() => {
     if (selectedNoteId) {
-      const match = data.notes.find((n) => n.id === selectedNoteId);
+      const match = localNotes.find((n) => n.id === selectedNoteId);
       if (match && !isEditorDirty) {
         activeNote = match;
       }
-    } else if (!isCreatingNew && data.notes.length > 0 && !activeNote) {
+    } else if (!isCreatingNew && localNotes.length > 0 && !activeNote) {
       if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-        selectedNoteId = data.notes[0].id;
-        activeNote = data.notes[0];
+        selectedNoteId = localNotes[0].id;
+        activeNote = localNotes[0];
       }
     }
   });
@@ -175,7 +182,7 @@
     data.tags.map((tag) => ({
       id: tag.id,
       name: tag.name,
-      count: data.notes.filter((n) => n.tags?.some((t) => t.id === tag.id)).length,
+      count: localNotes.filter((n) => n.tags?.some((t) => t.id === tag.id)).length,
     }))
   );
 
@@ -313,9 +320,9 @@
   function handleCancelEditor() {
     confirmIfDirty(() => {
       isCreatingNew = false;
-      if (data.notes.length > 0) {
-        selectedNoteId = data.notes[0].id;
-        activeNote = data.notes[0];
+      if (localNotes.length > 0) {
+        selectedNoteId = localNotes[0].id;
+        activeNote = localNotes[0];
       } else {
         selectedNoteId = null;
         activeNote = null;
@@ -384,17 +391,17 @@
 
   // Action handlers via form POST
   function handleDeleteNote(noteId: string) {
-    const noteToDelete = data.notes.find((n) => n.id === noteId);
+    const noteToDelete = localNotes.find((n) => n.id === noteId);
     if (!noteToDelete) return;
 
     // 1. Snapshot previous notes and optimistically remove from visible list
-    const previousNotes = [...data.notes];
-    data.notes = data.notes.filter((n) => n.id !== noteId);
+    const previousNotes = [...localNotes];
+    localNotes = localNotes.filter((n) => n.id !== noteId);
 
     // 2. Adjust selection if the deleted note was open
     if (selectedNoteId === noteId) {
-      if (data.notes.length > 0) {
-        selectedNoteId = data.notes[0].id;
+      if (localNotes.length > 0) {
+        selectedNoteId = localNotes[0].id;
       } else {
         selectedNoteId = null;
         isCreatingNew = false;
@@ -444,7 +451,7 @@
             pendingDeleteTimers.delete(noteId);
           }
           // Restore note to visible list and select it
-          data.notes = previousNotes;
+          localNotes = previousNotes;
           selectedNoteId = noteToDelete.id;
           mobileView = 'editor';
           toast.success(`Note "${noteToDelete.title}" restored`);
@@ -533,7 +540,7 @@
       <TagFilter
         tags={tagsWithCounts}
         selectedTagId={data.filters?.tagId}
-        totalNotesCount={data.notes.length}
+        totalNotesCount={localNotes.length}
         onSelectTag={handleSelectTag}
         onClearTag={handleClearTag}
       />
@@ -547,7 +554,7 @@
         <TagFilter
           tags={tagsWithCounts}
           selectedTagId={data.filters?.tagId}
-          totalNotesCount={data.notes.length}
+          totalNotesCount={localNotes.length}
           onSelectTag={handleSelectTag}
           onClearTag={handleClearTag}
         />
@@ -599,7 +606,7 @@
 
       <div class="master-list-scrollable">
         <NoteList
-          notes={data.notes}
+          notes={localNotes}
           {selectedNoteId}
           searchQuery={data.filters?.search}
           selectedTagId={data.filters?.tagId}
