@@ -476,7 +476,6 @@ export async function getPublicNoteByToken(token: string): Promise<PublicNote | 
   const [result] = await db
     .select({
       note: notes,
-      authorId: users.id,
       authorName: users.name,
       authorEmail: users.email,
     })
@@ -500,6 +499,10 @@ export async function getPublicNoteByToken(token: string): Promise<PublicNote | 
     .where(eq(noteTags.noteId, result.note.id))
     .orderBy(asc(tags.name));
 
+  const rawName = result.authorName?.trim();
+  const displayName =
+    rawName || (result.authorEmail ? result.authorEmail.split('@')[0] : 'Anonymous');
+
   return {
     id: result.note.id,
     title: result.note.title,
@@ -510,9 +513,8 @@ export async function getPublicNoteByToken(token: string): Promise<PublicNote | 
     createdAt: result.note.createdAt,
     updatedAt: result.note.updatedAt,
     author: {
-      id: result.authorId,
-      name: result.authorName,
-      email: result.authorEmail,
+      name: rawName || null,
+      displayName,
     },
     tags: attachedTags,
   };

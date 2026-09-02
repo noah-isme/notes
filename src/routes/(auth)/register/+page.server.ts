@@ -10,6 +10,7 @@ import {
   setSessionTokenCookie,
 } from '$lib/server/auth';
 import { validateEmail, validatePassword } from '$lib/utils/validation';
+import { checkRateLimit, extractClientIp, resetRateLimit } from '$lib/server/rateLimit';
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (locals.user) {
@@ -20,6 +21,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
   default: async (event) => {
+    const ip = extractClientIp(event.request, event.getClientAddress);
+    const rateLimit = checkRateLimit(`register:${ip}`, 5, 60000);
+
+    if (!rateLimit.allowed) {
+      return fail(429, {
+        email: '',
+        error: `Too many registration attempts. Please try again in ${rateLimit.retryAfterSec} seconds.`,
+      });
+    }
+
     const formData = await event.request.formData();
     const email = formData.get('email');
     const password = formData.get('password');
@@ -62,6 +73,8 @@ export const actions: Actions = {
         passwordHash,
       })
       .returning();
+
+    resetRateLimit(`register:${ip}`);
 
     // Automatically issue session and log user in
     const token = generateSessionToken();

@@ -176,10 +176,10 @@ describe('Integration: Public Note Sharing Service Layer', () => {
       expect(publicNote).not.toBeNull();
       expect(publicNote?.id).toBe(note.id);
       expect(publicNote?.title).toBe('Compiler Design');
-      expect(publicNote?.content).toContain('Nanoseconds');
       expect(publicNote?.author).toBeDefined();
-      expect(publicNote?.author.id).toBe(user.id);
-      expect(publicNote?.author.email).toBe('grace@hopper.org');
+      expect(publicNote?.author.displayName).toBe('grace');
+      expect((publicNote?.author as any).email).toBeUndefined();
+      expect((publicNote?.author as any).id).toBeUndefined();
       expect(publicNote?.tags.length).toBe(2);
       expect(publicNote?.tags.map((t) => t.name).sort()).toEqual(['cs', 'hardware']);
     });

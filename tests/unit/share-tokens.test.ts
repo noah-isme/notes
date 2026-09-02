@@ -85,9 +85,8 @@ describe('Unit: Share UI Components Rendering (SSR)', () => {
       createdAt: new Date('2026-09-01T10:00:00Z'),
       updatedAt: new Date('2026-09-02T12:00:00Z'),
       author: {
-        id: 'user-uuid-1',
         name: 'Alice Engineer',
-        email: 'alice@example.com',
+        displayName: 'Alice Engineer',
       },
       tags: [
         { id: 'tag-1', userId: 'user-uuid-1', name: 'architecture', createdAt: new Date() },
@@ -115,7 +114,7 @@ describe('Unit: Share UI Components Rendering (SSR)', () => {
     expect(result.body).toContain('Shared Note');
   });
 
-  it('should fallback to email prefix if author name is missing in PublicSharePage', () => {
+  it('should fallback to displayName if author name is missing in PublicSharePage', () => {
     const mockPublicNote = {
       id: 'note-uuid-2',
       title: 'Solo Project Notes',
@@ -126,9 +125,8 @@ describe('Unit: Share UI Components Rendering (SSR)', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       author: {
-        id: 'user-uuid-2',
         name: null,
-        email: 'developer@example.com',
+        displayName: 'developer',
       },
       tags: [],
     };

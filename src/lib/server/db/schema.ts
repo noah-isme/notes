@@ -194,9 +194,8 @@ export interface NoteWithTags extends Note {
 }
 
 export interface PublicAuthor {
-  id: string;
   name: string | null;
-  email: string;
+  displayName: string;
 }
 
 export interface PublicNote {

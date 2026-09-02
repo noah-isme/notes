@@ -23,15 +23,9 @@
     }
   });
 
-  let authorDisplayName = $derived.by(() => {
-    if (data.note?.author?.name && data.note.author.name.trim()) {
-      return data.note.author.name.trim();
-    }
-    if (data.note?.author?.email) {
-      return data.note.author.email.split('@')[0];
-    }
-    return 'Anonymous';
-  });
+  let authorDisplayName = $derived(
+    data.note?.author?.displayName || data.note?.author?.name || 'Anonymous'
+  );
 </script>
 
 <svelte:head>
