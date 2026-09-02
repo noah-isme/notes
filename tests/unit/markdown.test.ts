@@ -69,6 +69,41 @@ describe('Unit: Markdown Parser & XSS Sanitizer', () => {
       expect(html).toContain('Official Docs');
     });
 
+    it('should render markdown tables with headers and alignment', async () => {
+      const input = `
+| Department | Key Interaction Points | Core Technologies & Deliverables |
+| :--- | :---: | ---: |
+| Management Office (MO) | Strategic alignment | Enterprise Google Workspace |
+| Operations (OPS) | Prospect research | Custom Python Scripts |
+`;
+      const html = await parse(input);
+
+      expect(html).toContain('<table');
+      expect(html).toContain('<thead>');
+      expect(html).toContain('<tbody>');
+      expect(html).toContain('Department</th>');
+      expect(html).toContain('Management Office (MO)</td>');
+      expect(html).toContain('Operations (OPS)</td>');
+    });
+
+    it('should handle markdown tables with loose empty lines', async () => {
+      const input = `
+| Department | Key Interaction Points | Core Technologies & Deliverables |
+
+| :--- | :--- | :--- |
+
+| 🏛️ Management Office (MO) | Strategic alignment | Enterprise Google Workspace |
+
+| ⚙️ Operations (OPS) | Prospect research | Custom Python Scripts |
+`;
+      const html = await parse(input);
+
+      expect(html).toContain('<table');
+      expect(html).toContain('Department</th>');
+      expect(html).toContain('🏛️ Management Office (MO)');
+      expect(html).toContain('⚙️ Operations (OPS)');
+    });
+
     it('should handle empty string and plain text gracefully', async () => {
       expect(await parse('')).toBe('');
       const plain = await parse('Plain text with no special markdown.');

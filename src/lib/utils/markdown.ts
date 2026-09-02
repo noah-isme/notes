@@ -151,6 +151,46 @@ function parseInline(text: string): string {
   return result;
 }
 
+function isTableSeparator(str: string): boolean {
+  const trimmed = str.trim();
+  if (!trimmed.includes('-') && !trimmed.includes(':')) return false;
+  return /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?$/.test(trimmed);
+}
+
+function splitTableRow(rowStr: string): string[] {
+  let trimmed = rowStr.trim();
+  if (trimmed.startsWith('|')) {
+    trimmed = trimmed.substring(1);
+  }
+  if (trimmed.endsWith('|')) {
+    trimmed = trimmed.substring(0, trimmed.length - 1);
+  }
+  return trimmed.split('|').map((c) => c.trim());
+}
+
+function isTableRow(str: string): boolean {
+  const trimmed = str.trim();
+  if (!trimmed.includes('|')) return false;
+  if (trimmed.startsWith('#') || trimmed.startsWith('>') || /^\uE000CB\d+\uE000$/.test(trimmed)) {
+    return false;
+  }
+  const cells = splitTableRow(trimmed);
+  return cells.length >= 2;
+}
+
+function parseTableAlignment(sepRow: string): Array<'left' | 'center' | 'right' | null> {
+  const cells = splitTableRow(sepRow);
+  return cells.map((cell) => {
+    const trimmed = cell.trim();
+    const starts = trimmed.startsWith(':');
+    const ends = trimmed.endsWith(':');
+    if (starts && ends) return 'center';
+    if (ends) return 'right';
+    if (starts) return 'left';
+    return null;
+  });
+}
+
 /**
  * Parses markdown string to sanitized HTML.
  */
@@ -241,6 +281,80 @@ export function renderMarkdown(markdown: string): string {
       flushList();
       flushBlockquote();
       continue;
+    }
+
+    // Table detection (Header row followed by separator row)
+    if (isTableRow(trimmed)) {
+      let sepIdx = -1;
+      for (let k = i + 1; k < Math.min(i + 4, lines.length); k++) {
+        const kTrimmed = lines[k].trim();
+        if (kTrimmed === '') continue;
+        if (isTableSeparator(kTrimmed)) {
+          sepIdx = k;
+          break;
+        }
+        break;
+      }
+
+      if (sepIdx !== -1) {
+        flushList();
+        flushBlockquote();
+
+        const headerCells = splitTableRow(trimmed);
+        const alignments = parseTableAlignment(lines[sepIdx].trim());
+        const bodyRows: string[][] = [];
+        let lastIdx = sepIdx;
+
+        for (let r = sepIdx + 1; r < lines.length; r++) {
+          const rTrimmed = lines[r].trim();
+          if (rTrimmed === '') {
+            let nextNonEmpty = '';
+            for (let n = r + 1; n < Math.min(r + 4, lines.length); n++) {
+              if (lines[n].trim() !== '') {
+                nextNonEmpty = lines[n].trim();
+                break;
+              }
+            }
+            if (nextNonEmpty && isTableRow(nextNonEmpty) && !isTableSeparator(nextNonEmpty)) {
+              continue;
+            } else {
+              break;
+            }
+          }
+          if (isTableRow(rTrimmed) && !isTableSeparator(rTrimmed)) {
+            bodyRows.push(splitTableRow(rTrimmed));
+            lastIdx = r;
+          } else {
+            break;
+          }
+        }
+
+        let tableHtml = '<div class="table-container"><table><thead><tr>';
+        headerCells.forEach((cell, cIdx) => {
+          const align = alignments[cIdx];
+          const alignStyle = align ? ` style="text-align: ${align};"` : '';
+          tableHtml += `<th${alignStyle}>${parseInline(cell)}</th>`;
+        });
+        tableHtml += '</tr></thead>';
+
+        if (bodyRows.length > 0) {
+          tableHtml += '<tbody>';
+          bodyRows.forEach((row) => {
+            tableHtml += '<tr>';
+            row.forEach((cell, cIdx) => {
+              const align = alignments[cIdx];
+              const alignStyle = align ? ` style="text-align: ${align};"` : '';
+              tableHtml += `<td${alignStyle}>${parseInline(cell)}</td>`;
+            });
+            tableHtml += '</tr>';
+          });
+          tableHtml += '</tbody>';
+        }
+        tableHtml += '</table></div>';
+        output.push(tableHtml);
+        i = lastIdx;
+        continue;
+      }
     }
 
     // Blockquote (> text)

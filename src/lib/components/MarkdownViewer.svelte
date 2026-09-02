@@ -146,21 +146,52 @@
     font-style: italic;
   }
 
+  :global(.markdown-viewer .table-container) {
+    width: 100%;
+    overflow-x: auto;
+    margin: 1rem 0;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+  }
+
   :global(.markdown-viewer table) {
     width: 100%;
     border-collapse: collapse;
-    margin: 0.75rem 0;
-  }
-
-  :global(.markdown-viewer th, .markdown-viewer td) {
-    border: 1px solid #e2e8f0;
-    padding: 0.5rem 0.75rem;
-    text-align: left;
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
   }
 
   :global(.markdown-viewer th) {
-    background: #f8fafc;
+    background: #f1f5f9;
+    color: #0f172a;
     font-weight: 600;
+    border-bottom: 1px solid #cbd5e1;
+    border-right: 1px solid #e2e8f0;
+    padding: 0.625rem 0.875rem;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  :global(.markdown-viewer td) {
+    border-bottom: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+    padding: 0.625rem 0.875rem;
+    color: #334155;
+    vertical-align: top;
+  }
+
+  :global(.markdown-viewer th:last-child, .markdown-viewer td:last-child) {
+    border-right: none;
+  }
+
+  :global(.markdown-viewer tr:last-child td) {
+    border-bottom: none;
+  }
+
+  :global(.markdown-viewer tr:nth-child(even)) {
+    background: #f8fafc;
   }
 
   :global(.markdown-viewer a) {
