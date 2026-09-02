@@ -1,23 +1,36 @@
 <script lang="ts">
   import type { ActionData } from './$types';
+  import { IconNote, IconAlert } from '$lib/components/icons';
 
   let { form }: { form: ActionData } = $props();
 </script>
 
+<svelte:head>
+  <title>Log In | Notes Workspace</title>
+</svelte:head>
+
 <div class="auth-container">
   <div class="auth-card">
-    <h1 class="auth-title">Welcome Back</h1>
-    <p class="auth-subtitle">Log in to access your private notes.</p>
+    <div class="auth-header-brand">
+      <div class="brand-badge">
+        <IconNote size={20} />
+      </div>
+      <div>
+        <h1 class="auth-title">Welcome Back</h1>
+        <p class="auth-subtitle">Log in to access your private notes.</p>
+      </div>
+    </div>
 
     {#if form?.error}
       <div class="error-banner" role="alert">
-        {form.error}
+        <IconAlert size={15} />
+        <span>{form.error}</span>
       </div>
     {/if}
 
     <form method="POST" class="auth-form">
       <div class="form-group">
-        <label for="email">Email</label>
+        <label for="email">Email Address</label>
         <input
           id="email"
           name="email"
@@ -57,91 +70,128 @@
     align-items: center;
     min-height: 80vh;
     padding: 1.5rem;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
+
   .auth-card {
     width: 100%;
-    max-width: 400px;
+    max-width: 380px;
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
+    border-radius: 8px;
     padding: 2rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
   }
+
+  .auth-header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .brand-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    background: #0f172a;
+    color: #ffffff;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
   .auth-title {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: #0f172a;
-    margin: 0 0 0.5rem 0;
+    margin: 0 0 0.125rem 0;
+    letter-spacing: -0.01em;
   }
+
   .auth-subtitle {
     color: #64748b;
-    font-size: 0.875rem;
-    margin: 0 0 1.5rem 0;
+    font-size: 0.8125rem;
+    margin: 0;
   }
+
   .error-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     background: #fef2f2;
-    color: #991b1b;
+    color: #b91c1c;
     border: 1px solid #fecaca;
-    padding: 0.75rem 1rem;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
+    padding: 0.625rem 0.875rem;
+    border-radius: 6px;
+    font-size: 0.8125rem;
     margin-bottom: 1.25rem;
   }
+
   .auth-form {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1rem;
   }
+
   .form-group {
     display: flex;
     flex-direction: column;
     gap: 0.375rem;
   }
+
   .form-group label {
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: 0.8125rem;
+    font-weight: 600;
     color: #334155;
   }
+
   .form-group input {
-    padding: 0.625rem 0.75rem;
+    padding: 0.5625rem 0.75rem;
     border: 1px solid #cbd5e1;
-    border-radius: 0.375rem;
-    font-size: 0.95rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: #0f172a;
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
+
   .form-group input:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
   }
+
   .btn-primary {
     background: #0f172a;
     color: #ffffff;
     font-weight: 600;
-    padding: 0.75rem;
-    border-radius: 0.375rem;
+    padding: 0.625rem;
+    border-radius: 6px;
     border: none;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.875rem;
     transition: background 0.15s;
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
   }
+
   .btn-primary:hover {
     background: #1e293b;
   }
+
   .auth-footer {
     text-align: center;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     color: #64748b;
-    margin-top: 1.5rem;
+    margin-top: 1.25rem;
     margin-bottom: 0;
   }
+
   .auth-footer a {
     color: #2563eb;
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
   }
+
   .auth-footer a:hover {
     text-decoration: underline;
   }

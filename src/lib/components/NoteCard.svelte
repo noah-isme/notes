@@ -1,5 +1,6 @@
 <script lang="ts">
   import { stripMarkdown } from '$lib/utils/markdown';
+  import { IconPin, IconEdit, IconTrash } from './icons';
 
   export interface NoteCardData {
     id: string;
@@ -80,7 +81,7 @@
   }
 </script>
 
-<article
+<div
   class="note-card {note.isPinned ? 'pinned' : ''} {isSelected ? 'selected' : ''}"
   onclick={handleCardClick}
   onkeydown={handleKeyDown}
@@ -92,7 +93,9 @@
   <div class="card-top-row">
     <h3 class="card-title">
       {#if note.isPinned}
-        <span class="pin-indicator" title="Pinned note" aria-label="Pinned">📌</span>
+        <span class="pin-indicator" title="Pinned note" aria-label="Pinned">
+          <IconPin size={13} filled={true} class="pin-icon-badge" />
+        </span>
       {/if}
       <span class="title-text">{note.title}</span>
     </h3>
@@ -105,7 +108,7 @@
         title={note.isPinned ? 'Unpin note' : 'Pin note'}
         aria-label={note.isPinned ? 'Unpin note' : 'Pin note'}
       >
-        {note.isPinned ? '📍' : '📌'}
+        <IconPin size={14} filled={note.isPinned} />
       </button>
 
       {#if onEdit}
@@ -116,7 +119,7 @@
           title="Edit note"
           aria-label="Edit note"
         >
-          ✏️
+          <IconEdit size={14} />
         </button>
       {/if}
 
@@ -128,7 +131,7 @@
           title="Delete note"
           aria-label="Delete note"
         >
-          🗑️
+          <IconTrash size={14} />
         </button>
       {/if}
     </div>
@@ -160,51 +163,52 @@
       </time>
     {/if}
   </div>
-</article>
+</div>
 
 <style>
   .note-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    padding: 1rem 1.125rem;
+    padding: 0.875rem 1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.625rem;
+    gap: 0.5rem;
     cursor: pointer;
     text-align: left;
     transition:
       box-shadow 0.15s ease,
-      border-color 0.15s ease,
-      transform 0.1s ease;
+      border-color 0.15s ease;
     user-select: none;
     box-sizing: border-box;
+    position: relative;
   }
 
   .note-card:hover {
     border-color: #cbd5e1;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
   }
 
   .note-card:focus-visible {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid #2563eb;
     outline-offset: 2px;
   }
 
   .note-card.selected {
-    border-color: #3b82f6;
+    border-color: #2563eb;
     background: #f8faff;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 0 1px #2563eb;
   }
 
   .note-card.pinned {
-    border-left: 4px solid #f59e0b;
-    background: #fffdfa;
+    border-left: 3px solid #f59e0b;
+    background: #ffffff;
   }
 
   .note-card.pinned.selected {
-    background: #fefcf6;
-    border-color: #f59e0b;
+    background: #f8faff;
+    border-left-color: #f59e0b;
+    border-color: #2563eb;
   }
 
   .card-top-row {
@@ -228,7 +232,10 @@
   }
 
   .pin-indicator {
-    font-size: 0.8125rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #d97706;
     flex-shrink: 0;
   }
 
@@ -239,31 +246,42 @@
   .card-actions {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.125rem;
     flex-shrink: 0;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+  }
+
+  .note-card:hover .card-actions,
+  .note-card.selected .card-actions {
+    opacity: 1;
   }
 
   .action-btn {
     background: transparent;
     border: none;
     cursor: pointer;
-    font-size: 0.8125rem;
-    padding: 0.25rem;
+    padding: 0.3125rem;
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #64748b;
-    transition: background 0.15s ease, transform 0.1s ease;
+    transition: all 0.15s ease;
   }
 
   .action-btn:hover {
     background: #f1f5f9;
-    transform: scale(1.1);
+    color: #0f172a;
+  }
+
+  .pin-btn.active-pin {
+    color: #d97706;
   }
 
   .delete-btn:hover {
     background: #fee2e2;
+    color: #dc2626;
   }
 
   .card-preview {
@@ -273,7 +291,8 @@
     line-height: 1.45;
     word-break: break-word;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -281,26 +300,27 @@
   .card-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.375rem;
+    gap: 0.25rem;
     margin-top: 0.125rem;
   }
 
   .tag-pill {
-    background: #e0f2fe;
-    color: #0284c7;
+    background: #f1f5f9;
+    color: #475569;
     font-size: 0.6875rem;
     font-weight: 500;
     padding: 0.125rem 0.4375rem;
     border-radius: 4px;
-    border: none;
+    border: 1px solid #e2e8f0;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: all 0.15s ease;
     font-family: inherit;
   }
 
   .tag-pill:hover {
-    background: #bae6fd;
-    color: #0369a1;
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #cbd5e1;
   }
 
   .card-footer {

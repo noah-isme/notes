@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import type { LayoutData } from './$types';
+  import { IconNote, IconUser } from '$lib/components/icons';
 
   let { data, children }: { data: LayoutData; children: Snippet } = $props();
 </script>
@@ -9,13 +10,17 @@
   <header class="app-header">
     <div class="header-content">
       <a href="/" class="logo">
-        <span class="logo-icon">📝</span>
+        <span class="logo-icon-wrapper">
+          <IconNote size={18} />
+        </span>
         <span class="logo-text">Notes</span>
       </a>
       {#if data.user}
         <div class="user-menu">
           <a href="/profile" class="user-profile-btn" title="Manage Account & Profile">
-            <span class="avatar-chip">👤</span>
+            <span class="avatar-chip">
+              <IconUser size={13} />
+            </span>
             <span class="user-display-label">{data.user.name || data.user.email}</span>
           </a>
           <form action="/logout" method="POST" class="logout-form">
@@ -38,6 +43,7 @@
       Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     background-color: #f8fafc;
     color: #0f172a;
+    -webkit-font-smoothing: antialiased;
   }
 
   .app-layout {
@@ -49,7 +55,7 @@
   .app-header {
     background: #ffffff;
     border-bottom: 1px solid #e2e8f0;
-    padding: 0.75rem 1.5rem;
+    padding: 0.625rem 1.5rem;
     position: sticky;
     top: 0;
     z-index: 50;
@@ -64,50 +70,64 @@
   }
 
   .logo {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     font-weight: 700;
-    color: #1e293b;
+    color: #0f172a;
     text-decoration: none;
-    transition: opacity 0.15s ease;
+    letter-spacing: -0.01em;
   }
 
-  .logo:hover {
-    opacity: 0.85;
+  .logo-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: #0f172a;
+    color: #ffffff;
+    border-radius: 6px;
+  }
+
+  .logo-text {
+    font-size: 1.0625rem;
+    font-weight: 700;
   }
 
   .user-menu {
     display: flex;
     align-items: center;
-    gap: 0.875rem;
+    gap: 0.75rem;
   }
 
   .user-profile-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4375rem;
     text-decoration: none;
-    background: #f8fafc;
+    background: #ffffff;
     border: 1px solid #e2e8f0;
-    padding: 0.35rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.875rem;
+    padding: 0.3125rem 0.6875rem;
+    border-radius: 6px;
+    font-size: 0.8125rem;
     color: #334155;
     transition: all 0.15s ease;
     max-width: 220px;
   }
 
   .user-profile-btn:hover {
-    background: #f1f5f9;
+    background: #f8fafc;
     border-color: #cbd5e1;
     color: #0f172a;
   }
 
   .avatar-chip {
-    font-size: 0.9375rem;
-    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
   }
 
   .user-display-label {
@@ -118,19 +138,21 @@
   }
 
   .btn-logout {
-    background: #f1f5f9;
+    background: #f8fafc;
     color: #475569;
-    border: 1px solid #cbd5e1;
+    border: 1px solid #e2e8f0;
     border-radius: 6px;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.3125rem 0.6875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: background 0.15s ease-in-out;
+    transition: all 0.15s ease-in-out;
   }
 
   .btn-logout:hover {
-    background: #e2e8f0;
-    color: #1e293b;
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0f172a;
   }
 
   .app-main {

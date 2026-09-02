@@ -2,15 +2,28 @@
   import type { PageData, ActionData } from './$types';
   import { toast } from '$lib/stores/toast.svelte';
   import Toast from '$lib/components/Toast.svelte';
+  import {
+    IconUser,
+    IconLock,
+    IconCheck,
+    IconAlert,
+    IconArrowLeft,
+  } from '$lib/components/icons';
 
   let { data, form }: { data: PageData; form?: ActionData } = $props();
 
   // Local state for profile inputs
-  let name = $state(data.profile.name ?? '');
-  let email = $state(data.profile.email);
+  let name = $state('');
+  let email = $state('');
   let currentPassword = $state('');
   let newPassword = $state('');
   let confirmPassword = $state('');
+
+  // Sync data to inputs on initial load or navigation
+  $effect(() => {
+    name = data.profile.name ?? '';
+    email = data.profile.email;
+  });
 
   // Handle toast notifications from form action responses
   $effect(() => {
@@ -58,7 +71,7 @@
 </script>
 
 <svelte:head>
-  <title>User Profile | Notes Workspace</title>
+  <title>Account Settings | Notes Workspace</title>
 </svelte:head>
 
 <Toast />
@@ -67,7 +80,8 @@
   <!-- Top Navigation Header -->
   <div class="profile-top-nav">
     <a href="/" class="btn-back-link">
-      ← Back to Notes
+      <IconArrowLeft size={14} />
+      <span>Back to Notes</span>
     </a>
     <span class="top-nav-title">Account Settings</span>
   </div>
@@ -79,7 +93,7 @@
     </div>
     <div class="profile-hero-info">
       <h2 class="profile-display-name">
-        {name || data.profile.name || 'Anonymous User'}
+        {name || data.profile.name || 'User Profile'}
       </h2>
       <p class="profile-email-sub">{email || data.profile.email}</p>
       <span class="profile-joined-date">Member since {memberSinceFormatted}</span>
@@ -103,7 +117,9 @@
     <!-- Card 1: Personal Information -->
     <section class="settings-card" aria-labelledby="personal-info-heading">
       <div class="card-header">
-        <div class="header-icon">👤</div>
+        <div class="header-icon">
+          <IconUser size={18} />
+        </div>
         <div>
           <h3 id="personal-info-heading" class="card-title">Personal Information</h3>
           <p class="card-subtitle">Update your display name and contact email address.</p>
@@ -112,13 +128,15 @@
 
       {#if form?.profileError}
         <div class="alert alert-error" role="alert">
-          <span>⚠️ {form.profileError}</span>
+          <IconAlert size={15} />
+          <span>{form.profileError}</span>
         </div>
       {/if}
 
       {#if form?.profileSuccess}
         <div class="alert alert-success" role="status">
-          <span>✅ {form.profileMessage}</span>
+          <IconCheck size={15} />
+          <span>{form.profileMessage}</span>
         </div>
       {/if}
 
@@ -162,7 +180,9 @@
     <!-- Card 2: Security & Password -->
     <section class="settings-card" aria-labelledby="security-heading">
       <div class="card-header">
-        <div class="header-icon">🔒</div>
+        <div class="header-icon">
+          <IconLock size={18} />
+        </div>
         <div>
           <h3 id="security-heading" class="card-title">Password & Security</h3>
           <p class="card-subtitle">Change your password to keep your notes workspace secure.</p>
@@ -171,13 +191,15 @@
 
       {#if form?.passwordError}
         <div class="alert alert-error" role="alert">
-          <span>⚠️ {form.passwordError}</span>
+          <IconAlert size={15} />
+          <span>{form.passwordError}</span>
         </div>
       {/if}
 
       {#if form?.passwordSuccess}
         <div class="alert alert-success" role="status">
-          <span>✅ {form.passwordMessage}</span>
+          <IconCheck size={15} />
+          <span>{form.passwordMessage}</span>
         </div>
       {/if}
 
@@ -236,11 +258,11 @@
 
 <style>
   .profile-container {
-    max-width: 900px;
+    max-width: 860px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.25rem;
     padding-bottom: 3rem;
   }
 
@@ -255,53 +277,54 @@
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
-    color: #2563eb;
+    color: #0f172a;
     text-decoration: none;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 600;
-    padding: 0.4rem 0.75rem;
+    padding: 0.375rem 0.75rem;
     background: #ffffff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     border-radius: 6px;
     transition: all 0.15s ease;
   }
 
   .btn-back-link:hover {
-    background: #f1f5f9;
-    color: #1d4ed8;
+    background: #f8fafc;
+    border-color: #94a3b8;
   }
 
   .top-nav-title {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   /* Hero Card */
   .profile-hero-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 1.75rem 2rem;
+    border-radius: 8px;
+    padding: 1.5rem 1.75rem;
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    gap: 1.25rem;
   }
 
   .profile-avatar {
-    width: 72px;
-    height: 72px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    background: #0f172a;
     color: #ffffff;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+    letter-spacing: 0.05em;
   }
 
   .profile-hero-info {
@@ -313,9 +336,10 @@
 
   .profile-display-name {
     margin: 0;
-    font-size: 1.375rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: #0f172a;
+    letter-spacing: -0.01em;
   }
 
   .profile-email-sub {
@@ -327,7 +351,7 @@
   .profile-joined-date {
     font-size: 0.75rem;
     color: #94a3b8;
-    margin-top: 0.25rem;
+    margin-top: 0.125rem;
   }
 
   .hero-stats-group {
@@ -344,35 +368,34 @@
   }
 
   .stat-number {
-    font-size: 1.5rem;
+    font-size: 1.375rem;
     font-weight: 700;
-    color: #1e293b;
+    color: #0f172a;
   }
 
   .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     color: #64748b;
     text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.05em;
+    font-weight: 700;
+    letter-spacing: 0.06em;
   }
 
   /* Settings Grid */
   .settings-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
 
   .settings-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 1.75rem;
+    border-radius: 8px;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
 
   .card-header {
@@ -384,20 +407,28 @@
   }
 
   .header-icon {
-    font-size: 1.375rem;
-    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #0f172a;
+    flex-shrink: 0;
   }
 
   .card-title {
     margin: 0;
-    font-size: 1.0625rem;
+    font-size: 0.9375rem;
     font-weight: 600;
     color: #0f172a;
   }
 
   .card-subtitle {
     margin: 0.25rem 0 0 0;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     color: #64748b;
     line-height: 1.4;
   }
@@ -421,7 +452,7 @@
   }
 
   .form-input {
-    padding: 0.625rem 0.875rem;
+    padding: 0.5625rem 0.75rem;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
     font-size: 0.875rem;
@@ -434,7 +465,7 @@
   .form-input:focus {
     outline: none;
     border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
   }
 
   .form-hint {
@@ -452,9 +483,9 @@
     background: #2563eb;
     color: #ffffff;
     border: none;
-    padding: 0.625rem 1.25rem;
+    padding: 0.5625rem 1.125rem;
     border-radius: 6px;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.15s ease;
@@ -466,7 +497,7 @@
 
   /* Alerts */
   .alert {
-    padding: 0.625rem 0.875rem;
+    padding: 0.5625rem 0.75rem;
     border-radius: 6px;
     font-size: 0.8125rem;
     font-weight: 500;
@@ -487,7 +518,6 @@
     border: 1px solid #bbf7d0;
   }
 
-  /* Responsive adjustments */
   @media (max-width: 768px) {
     .settings-grid {
       grid-template-columns: 1fr;
@@ -496,13 +526,13 @@
     .profile-hero-card {
       flex-direction: column;
       text-align: center;
-      padding: 1.5rem;
+      padding: 1.25rem;
     }
 
     .hero-stats-group {
       padding-left: 0;
       border-left: none;
-      padding-top: 1rem;
+      padding-top: 0.75rem;
       border-top: 1px solid #f1f5f9;
       width: 100%;
       justify-content: center;

@@ -1,5 +1,14 @@
 <script lang="ts">
   import { renderMarkdown } from '$lib/utils/markdown';
+  import {
+    IconPin,
+    IconEdit,
+    IconEye,
+    IconSplit,
+    IconTrash,
+    IconAlert,
+    IconClose,
+  } from './icons';
 
   export interface NoteEditorData {
     id?: string;
@@ -92,7 +101,6 @@
       return;
     }
     if (onSave) {
-      // If parent handles custom client save
       onSave({
         id: note?.id,
         title: title.trim(),
@@ -115,7 +123,7 @@
 <div class="note-editor-wrapper">
   {#if formError}
     <div class="alert-error" role="alert">
-      <span class="error-icon">⚠</span>
+      <IconAlert size={16} />
       <span>{formError}</span>
     </div>
   {/if}
@@ -154,14 +162,15 @@
       </div>
 
       <div class="top-controls">
-        <label class="pin-toggle-btn {isPinned ? 'pinned' : ''}" title={isPinned ? 'Pinned' : 'Pin note'}>
+        <label class="pin-toggle-btn {isPinned ? 'pinned' : ''}" title={isPinned ? 'Unpin note' : 'Pin note'}>
           <input
             type="checkbox"
             checked={isPinned}
             onchange={(e) => (isPinned = (e.target as HTMLInputElement).checked)}
             class="sr-only"
           />
-          <span class="pin-icon">{isPinned ? '📍 Pinned' : '📌 Pin'}</span>
+          <IconPin size={13} filled={isPinned} />
+          <span>{isPinned ? 'Pinned' : 'Pin'}</span>
         </label>
 
         <!-- View Mode Switcher -->
@@ -172,8 +181,10 @@
             onclick={() => (viewMode = 'edit')}
             role="tab"
             aria-selected={viewMode === 'edit'}
+            title="Edit mode"
           >
-            Edit
+            <IconEdit size={13} />
+            <span>Edit</span>
           </button>
           <button
             type="button"
@@ -181,8 +192,10 @@
             onclick={() => (viewMode = 'split')}
             role="tab"
             aria-selected={viewMode === 'split'}
+            title="Split mode"
           >
-            Split
+            <IconSplit size={13} />
+            <span>Split</span>
           </button>
           <button
             type="button"
@@ -190,8 +203,10 @@
             onclick={() => (viewMode = 'preview')}
             role="tab"
             aria-selected={viewMode === 'preview'}
+            title="Preview mode"
           >
-            Preview
+            <IconEye size={13} />
+            <span>Preview</span>
           </button>
         </div>
       </div>
@@ -210,7 +225,7 @@
               onclick={() => removeTag(idx)}
               aria-label={`Remove tag ${tag}`}
             >
-              &times;
+              <IconClose size={10} />
             </button>
           </span>
         {/each}
@@ -273,7 +288,8 @@
             onclick={handleDelete}
             disabled={isSubmitting}
           >
-            🗑️ Delete Note
+            <IconTrash size={14} />
+            <span>Delete Note</span>
           </button>
         {/if}
       </div>
@@ -367,8 +383,8 @@
   }
 
   .title-input:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
   }
 
   .title-input.invalid {
@@ -397,6 +413,7 @@
   .pin-toggle-btn {
     display: inline-flex;
     align-items: center;
+    gap: 0.375rem;
     padding: 0.375rem 0.75rem;
     font-size: 0.8125rem;
     font-weight: 500;
@@ -439,6 +456,9 @@
   }
 
   .mode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
     background: none;
     border: none;
     padding: 0.25rem 0.625rem;
@@ -450,21 +470,22 @@
     transition: all 0.15s ease;
   }
 
+  .mode-btn:hover {
+    color: #1e293b;
+  }
+
   .mode-btn.active {
     background: #ffffff;
     color: #0f172a;
     font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
   .tags-manager-row {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
+    padding: 0.25rem 0;
   }
 
   .tag-label {
@@ -485,36 +506,40 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    background: #e0f2fe;
-    color: #0284c7;
+    background: #f1f5f9;
+    color: #334155;
     font-size: 0.75rem;
     font-weight: 500;
-    padding: 0.125rem 0.375rem;
+    padding: 0.1875rem 0.5rem;
     border-radius: 4px;
+    border: 1px solid #e2e8f0;
   }
 
   .tag-remove-btn {
     background: none;
     border: none;
-    color: #0284c7;
-    font-size: 0.875rem;
-    line-height: 1;
+    color: #94a3b8;
     cursor: pointer;
     padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease;
   }
 
   .tag-remove-btn:hover {
-    color: #0369a1;
+    color: #dc2626;
   }
 
   .tag-inline-input {
     border: none;
-    background: transparent;
-    font-size: 0.8125rem;
-    color: #1e293b;
     outline: none;
-    flex: 1;
+    font-size: 0.8125rem;
+    color: #0f172a;
+    padding: 0.25rem 0.375rem;
     min-width: 140px;
+    flex: 1;
+    background: transparent;
   }
 
   .tag-inline-input::placeholder {
@@ -522,177 +547,192 @@
   }
 
   .editor-workspace {
-    display: grid;
-    gap: 1rem;
     flex: 1;
-    min-height: 320px;
+    min-height: 380px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
   }
 
   .editor-workspace.split {
+    display: grid;
     grid-template-columns: 1fr 1fr;
   }
 
   .editor-workspace.edit {
-    grid-template-columns: 1fr;
+    display: flex;
   }
 
   .editor-workspace.preview {
-    grid-template-columns: 1fr;
-  }
-
-  @media (max-width: 768px) {
-    .editor-workspace.split {
-      grid-template-columns: 1fr;
-    }
+    display: flex;
   }
 
   .workspace-pane {
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: #ffffff;
+    height: 100%;
     overflow-y: auto;
+    box-sizing: border-box;
+  }
+
+  .editor-pane {
     display: flex;
     flex-direction: column;
+  }
+
+  .editor-workspace.split .editor-pane {
+    border-right: 1px solid #e2e8f0;
   }
 
   .markdown-textarea {
     width: 100%;
     height: 100%;
-    min-height: 280px;
-    padding: 0.75rem;
+    min-height: 380px;
+    padding: 1rem;
     border: none;
     outline: none;
-    resize: vertical;
+    resize: none;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
       'Courier New', monospace;
     font-size: 0.875rem;
     line-height: 1.6;
-    color: #1e293b;
+    color: #0f172a;
+    background: #ffffff;
     box-sizing: border-box;
   }
 
   .preview-pane {
-    padding: 0.75rem 1rem;
+    padding: 1rem 1.25rem;
     background: #fdfdfd;
   }
 
+  .empty-preview {
+    color: #94a3b8;
+    font-size: 0.875rem;
+    padding: 2rem;
+    text-align: center;
+  }
+
   .markdown-preview {
-    font-size: 0.9375rem;
-    line-height: 1.65;
-    color: #334155;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: #1e293b;
     word-break: break-word;
   }
 
   :global(.markdown-preview h1) {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #0f172a;
-    margin: 0.5rem 0 0.75rem 0;
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 0.375rem;
   }
 
   :global(.markdown-preview h2) {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #1e293b;
-    margin: 0.5rem 0 0.5rem 0;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
   }
 
   :global(.markdown-preview h3) {
-    font-size: 1.1rem;
+    font-size: 1.0625rem;
     font-weight: 600;
-    color: #1e293b;
-    margin: 0.5rem 0 0.25rem 0;
+    margin-top: 1rem;
+    margin-bottom: 0.375rem;
   }
 
   :global(.markdown-preview p) {
-    margin: 0 0 0.75rem 0;
+    margin-top: 0;
+    margin-bottom: 0.75rem;
   }
 
-  :global(.markdown-preview ul),
-  :global(.markdown-preview ol) {
-    margin: 0 0 0.75rem 0;
-    padding-left: 1.25rem;
+  :global(.markdown-preview ul, .markdown-preview ol) {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    padding-left: 1.5rem;
   }
 
   :global(.markdown-preview li) {
     margin-bottom: 0.25rem;
   }
 
-  :global(.markdown-preview blockquote) {
-    margin: 0 0 0.75rem 0;
-    padding: 0.5rem 1rem;
-    border-left: 4px solid #94a3b8;
-    background: #f1f5f9;
-    color: #475569;
-    border-radius: 0 4px 4px 0;
-  }
-
   :global(.markdown-preview code) {
     background: #f1f5f9;
-    color: #0f172a;
     padding: 0.125rem 0.375rem;
     border-radius: 4px;
+    font-family: ui-monospace, monospace;
     font-size: 0.8125rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+    color: #0f172a;
   }
 
   :global(.markdown-preview pre) {
-    background: #1e293b;
+    background: #0f172a;
     color: #f8fafc;
-    padding: 0.75rem 1rem;
+    padding: 0.875rem 1rem;
     border-radius: 6px;
     overflow-x: auto;
-    margin: 0 0 0.75rem 0;
+    margin: 0.75rem 0;
   }
 
   :global(.markdown-preview pre code) {
     background: transparent;
     color: inherit;
     padding: 0;
+    font-size: 0.8125rem;
   }
 
-  :global(.markdown-preview a) {
-    color: #2563eb;
-    text-decoration: underline;
+  :global(.markdown-preview blockquote) {
+    margin: 0.75rem 0;
+    padding-left: 1rem;
+    border-left: 4px solid #cbd5e1;
+    color: #475569;
+    font-style: italic;
   }
 
-  :global(.markdown-preview a:hover) {
-    color: #1d4ed8;
+  :global(.markdown-preview table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
   }
 
-  .empty-preview {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: #94a3b8;
-    font-size: 0.875rem;
-    padding: 2rem 0;
+  :global(.markdown-preview th, .markdown-preview td) {
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+
+  :global(.markdown-preview th) {
+    background: #f8fafc;
+    font-weight: 600;
   }
 
   .editor-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
-    margin-top: auto;
+    gap: 1rem;
     padding-top: 0.5rem;
-    border-top: 1px solid #f1f5f9;
   }
 
-  .footer-left,
+  .footer-left {
+    display: flex;
+    align-items: center;
+  }
+
   .footer-right {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    margin-left: auto;
   }
 
   .btn-primary {
     background: #2563eb;
     color: #ffffff;
     border: none;
+    padding: 0.5rem 1.125rem;
     border-radius: 6px;
-    padding: 0.5rem 1.25rem;
     font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
@@ -704,41 +744,55 @@
   }
 
   .btn-primary:disabled {
-    background: #94a3b8;
+    opacity: 0.6;
     cursor: not-allowed;
   }
 
   .btn-secondary {
-    background: #f1f5f9;
+    background: #f8fafc;
     color: #475569;
     border: 1px solid #cbd5e1;
-    border-radius: 6px;
     padding: 0.5rem 1rem;
+    border-radius: 6px;
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: all 0.15s ease;
   }
 
   .btn-secondary:hover:not(:disabled) {
-    background: #e2e8f0;
+    background: #f1f5f9;
     color: #0f172a;
   }
 
   .btn-danger {
-    background: #fee2e2;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    background: transparent;
     color: #dc2626;
     border: 1px solid #fecaca;
-    border-radius: 6px;
     padding: 0.5rem 0.875rem;
-    font-size: 0.8125rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: all 0.15s ease;
   }
 
   .btn-danger:hover:not(:disabled) {
-    background: #fca5a5;
-    color: #991b1b;
+    background: #fee2e2;
+  }
+
+  @media (max-width: 768px) {
+    .editor-workspace.split {
+      grid-template-columns: 1fr;
+    }
+
+    .editor-workspace.split .editor-pane {
+      border-right: none;
+      border-bottom: 1px solid #e2e8f0;
+      min-height: 240px;
+    }
   }
 </style>

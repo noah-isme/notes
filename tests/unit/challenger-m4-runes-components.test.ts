@@ -90,8 +90,8 @@ describe('Challenger M4: Svelte 5 Runes & Components Empirical Verification', ()
       });
       expect(html).toContain('Edit note');
       expect(html).toContain('Delete note');
-      expect(html).toContain('✏️');
-      expect(html).toContain('🗑️');
+      expect(html).toContain('edit-btn');
+      expect(html).toContain('delete-btn');
     });
 
     it('does not render edit/delete action buttons when onEditNote/onDeleteNote are omitted', () => {
@@ -102,8 +102,8 @@ describe('Challenger M4: Svelte 5 Runes & Components Empirical Verification', ()
       });
       expect(html).not.toContain('Edit note');
       expect(html).not.toContain('Delete note');
-      expect(html).not.toContain('✏️');
-      expect(html).not.toContain('🗑️');
+      expect(html).not.toContain('edit-btn');
+      expect(html).not.toContain('delete-btn');
     });
 
     it('highlights selected note card when selectedNoteId matches', () => {
@@ -120,7 +120,7 @@ describe('Challenger M4: Svelte 5 Runes & Components Empirical Verification', ()
     it('renders empty state when notes array is empty and unfiltered', () => {
       const { html } = render(NoteList, { props: { notes: [], onCreateNew: () => {} } });
       expect(html).toContain('No notes yet');
-      expect(html).toContain('+ Create New Note');
+      expect(html).toContain('Create New Note');
     });
 
     it('renders filter empty state when searchQuery or tag is active with 0 results', () => {

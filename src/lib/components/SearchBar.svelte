@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { IconSearch, IconClose } from './icons';
+
   interface SearchBarProps {
     value?: string;
     placeholder?: string;
@@ -57,7 +59,9 @@
 </script>
 
 <div class="search-bar-container">
-  <span class="search-icon" aria-hidden="true">🔍</span>
+  <span class="search-icon" aria-hidden="true">
+    <IconSearch size={15} />
+  </span>
   <input
     type="text"
     class="search-input"
@@ -74,7 +78,7 @@
       onclick={handleClear}
       aria-label="Clear search query"
     >
-      &times;
+      <IconClose size={13} />
     </button>
   {/if}
 </div>
@@ -90,20 +94,22 @@
   .search-icon {
     position: absolute;
     left: 0.75rem;
-    font-size: 0.875rem;
     color: #94a3b8;
     pointer-events: none;
     user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .search-input {
     width: 100%;
-    padding: 0.625rem 2.25rem 0.625rem 2.25rem;
+    padding: 0.5625rem 2.25rem 0.5625rem 2.25rem;
     font-size: 0.875rem;
     border: 1px solid #cbd5e1;
-    border-radius: 8px;
+    border-radius: 6px;
     background: #ffffff;
-    color: #1e293b;
+    color: #0f172a;
     outline: none;
     transition:
       border-color 0.15s ease,
@@ -112,8 +118,8 @@
   }
 
   .search-input:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
   }
 
   .search-input::placeholder {
@@ -126,8 +132,6 @@
     background: none;
     border: none;
     color: #94a3b8;
-    font-size: 1.125rem;
-    line-height: 1;
     width: 1.5rem;
     height: 1.5rem;
     display: flex;
@@ -139,7 +143,7 @@
   }
 
   .search-clear-btn:hover {
-    color: #475569;
+    color: #0f172a;
     background: #f1f5f9;
   }
 </style>

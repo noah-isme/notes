@@ -1,5 +1,6 @@
 <script lang="ts">
   import NoteCard, { type NoteCardData } from './NoteCard.svelte';
+  import { IconPin, IconNote, IconSearch, IconPlus } from './icons';
 
   interface NoteListProps {
     notes: NoteCardData[];
@@ -40,7 +41,9 @@
   {#if notes.length === 0}
     <div class="empty-state">
       {#if isFiltered}
-        <div class="empty-icon">🔍</div>
+        <div class="empty-icon-wrapper">
+          <IconSearch size={28} />
+        </div>
         <h4 class="empty-title">No notes found</h4>
         <p class="empty-desc">
           No notes match
@@ -60,12 +63,15 @@
           </button>
         {/if}
       {:else}
-        <div class="empty-icon">📝</div>
+        <div class="empty-icon-wrapper">
+          <IconNote size={28} />
+        </div>
         <h4 class="empty-title">No notes yet</h4>
         <p class="empty-desc">Create your first note to get started organizing your thoughts.</p>
         {#if onCreateNew}
           <button type="button" class="btn-create-empty" onclick={onCreateNew}>
-            + Create New Note
+            <IconPlus size={14} />
+            <span>Create New Note</span>
           </button>
         {/if}
       {/if}
@@ -75,7 +81,10 @@
       {#if pinnedNotes.length > 0}
         <div class="section-group">
           <div class="section-header">
-            <span class="section-title">📌 Pinned ({pinnedNotes.length})</span>
+            <span class="section-title">
+              <IconPin size={12} filled={true} class="section-pin-icon" />
+              Pinned ({pinnedNotes.length})
+            </span>
           </div>
           <div class="cards-stack">
             {#each pinnedNotes as note (note.id)}
@@ -146,17 +155,20 @@
   }
 
   .section-title {
-    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.6875rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     color: #64748b;
   }
 
   .cards-stack {
     display: flex;
     flex-direction: column;
-    gap: 0.625rem;
+    gap: 0.5rem;
   }
 
   .empty-state {
@@ -172,15 +184,21 @@
     gap: 0.75rem;
   }
 
-  .empty-icon {
-    font-size: 2rem;
+  .empty-icon-wrapper {
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background: #f8fafc;
+    border-radius: 50%;
   }
 
   .empty-title {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.9375rem;
     font-weight: 600;
-    color: #1e293b;
+    color: #0f172a;
   }
 
   .empty-desc {
@@ -201,6 +219,9 @@
     font-weight: 600;
     border-radius: 6px;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
     transition: background 0.15s ease;
   }
 
@@ -210,7 +231,7 @@
 
   .btn-clear-empty {
     margin-top: 0.5rem;
-    background: #f1f5f9;
+    background: #f8fafc;
     color: #475569;
     border: 1px solid #cbd5e1;
     padding: 0.4rem 0.875rem;
@@ -218,11 +239,11 @@
     font-weight: 500;
     border-radius: 6px;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: all 0.15s ease;
   }
 
   .btn-clear-empty:hover {
-    background: #e2e8f0;
+    background: #f1f5f9;
     color: #0f172a;
   }
 </style>

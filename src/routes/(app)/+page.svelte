@@ -9,6 +9,12 @@
   import NoteList from '$lib/components/NoteList.svelte';
   import NoteEditor from '$lib/components/NoteEditor.svelte';
   import type { NoteCardData } from '$lib/components/NoteCard.svelte';
+  import {
+    IconNote,
+    IconTag,
+    IconPlus,
+    IconArrowLeft,
+  } from '$lib/components/icons';
 
   let { data, form }: { data: PageData; form?: ActionData } = $props();
 
@@ -26,7 +32,6 @@
   // If no note selected and we have notes, auto-select the first note on desktop
   $effect(() => {
     if (!selectedNoteId && !isCreatingNew && data.notes.length > 0) {
-      // If we are not on mobile, select first note
       if (typeof window !== 'undefined' && window.innerWidth >= 768) {
         selectedNoteId = data.notes[0].id;
       }
@@ -58,11 +63,11 @@
     data.tags.map((tag) => ({
       id: tag.id,
       name: tag.name,
-      count: data.notes.filter((n) => n.tags.some((t) => t.id === tag.id)).length,
+      count: data.notes.filter((n) => n.tags?.some((t) => t.id === tag.id)).length,
     }))
   );
 
-  // Handlers
+  // Client-side interactions
   function handleSelectNote(note: NoteCardData) {
     selectedNoteId = note.id;
     isCreatingNew = false;
@@ -75,57 +80,83 @@
     mobileView = 'editor';
   }
 
+  function handleCancelEditor() {
+    isCreatingNew = false;
+    if (data.notes.length > 0) {
+      selectedNoteId = data.notes[0].id;
+    } else {
+      selectedNoteId = null;
+    }
+    mobileView = 'list';
+  }
+
   function handleBackToList() {
     mobileView = 'list';
   }
 
-  function handleCancelEditor() {
-    isCreatingNew = false;
-    if (data.notes.length > 0 && !selectedNoteId) {
-      selectedNoteId = data.notes[0].id;
+  // Filter updates
+  async function updateQueryParam(key: string, value: string | null) {
+    const url = new URL($page.url);
+    if (value) {
+      url.searchParams.set(key, value);
+    } else {
+      url.searchParams.delete(key);
     }
-    mobileView = 'list';
+    await goto(url.toString(), { keepFocus: true, noScroll: true });
   }
 
   function handleSearch(query: string) {
-    const url = new URL(window.location.href);
-    if (query.trim()) {
-      url.searchParams.set('search', query.trim());
-    } else {
-      url.searchParams.delete('search');
-    }
-    goto(url.toString(), { keepFocus: true, noScroll: true });
+    updateQueryParam('search', query.trim() ? query : null);
   }
 
   function handleSelectTag(tagId: string) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('tagId', tagId);
+    updateQueryParam('tagId', tagId);
     isTagFilterOpenMobile = false;
-    goto(url.toString(), { keepFocus: true, noScroll: true });
   }
 
   function handleClearTag() {
-    const url = new URL(window.location.href);
-    url.searchParams.delete('tagId');
+    updateQueryParam('tagId', null);
     isTagFilterOpenMobile = false;
-    goto(url.toString(), { keepFocus: true, noScroll: true });
   }
 
   function handleClearAllFilters() {
-    const url = new URL(window.location.href);
+    const url = new URL($page.url);
     url.searchParams.delete('search');
     url.searchParams.delete('tagId');
-    url.searchParams.delete('isPinned');
-    isTagFilterOpenMobile = false;
-    goto(url.pathname, { keepFocus: true, noScroll: true });
+    goto(url.toString(), { keepFocus: true, noScroll: true });
   }
 
   function handleTagClickFromCard(tagName: string) {
-    const matchingTag = data.tags.find(
-      (t) => t.name.toLowerCase() === tagName.toLowerCase()
-    );
-    if (matchingTag) {
-      handleSelectTag(matchingTag.id);
+    const matching = data.tags.find((t) => t.name.toLowerCase() === tagName.toLowerCase());
+    if (matching) {
+      handleSelectTag(matching.id);
+    }
+  }
+
+  // Action handlers via form POST
+  async function handleDeleteNote(noteId: string) {
+    const formData = new FormData();
+    formData.append('id', noteId);
+
+    try {
+      const response = await fetch('?/delete', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        toast.success('Note deleted successfully');
+        if (selectedNoteId === noteId) {
+          selectedNoteId = null;
+          isCreatingNew = false;
+          mobileView = 'list';
+        }
+        await goto($page.url.toString(), { invalidateAll: true });
+      } else {
+        toast.error('Failed to delete note');
+      }
+    } catch {
+      toast.error('An error occurred while deleting note');
     }
   }
 
@@ -139,41 +170,21 @@
         method: 'POST',
         body: formData,
       });
+
       if (response.ok) {
-        toast.info(isPinned ? 'Note pinned to top' : 'Note unpinned');
-        // Refresh page data
-        goto(window.location.href, { invalidateAll: true });
+        toast.success(isPinned ? 'Note pinned' : 'Note unpinned');
+        await goto($page.url.toString(), { invalidateAll: true });
+      } else {
+        toast.error('Failed to update pin status');
       }
     } catch {
-      toast.error('Failed to update pin state');
-    }
-  }
-
-  async function handleDeleteNote(noteId: string) {
-    const formData = new FormData();
-    formData.append('id', noteId);
-
-    try {
-      const response = await fetch('?/delete', {
-        method: 'POST',
-        body: formData,
-      });
-      if (response.ok) {
-        toast.success('Note deleted');
-        if (selectedNoteId === noteId) {
-          selectedNoteId = null;
-        }
-        mobileView = 'list';
-        goto(window.location.href, { invalidateAll: true });
-      }
-    } catch {
-      toast.error('Failed to delete note');
+      toast.error('An error occurred while updating pin status');
     }
   }
 </script>
 
 <svelte:head>
-  <title>Notes | Markdown Workspace</title>
+  <title>Notes Workspace</title>
 </svelte:head>
 
 <Toast />
@@ -183,7 +194,8 @@
   <div class="mobile-nav-bar">
     {#if mobileView === 'editor'}
       <button type="button" class="btn-back-nav" onclick={handleBackToList}>
-        ← Back to Notes
+        <IconArrowLeft size={14} />
+        <span>Back to Notes</span>
       </button>
       <span class="mobile-nav-title">
         {isCreatingNew ? 'New Note' : selectedNote?.title || 'Edit Note'}
@@ -194,10 +206,12 @@
         class="btn-tag-drawer-toggle"
         onclick={() => (isTagFilterOpenMobile = !isTagFilterOpenMobile)}
       >
-        🏷️ {selectedTag ? `#${selectedTag.name}` : 'All Tags'}
+        <IconTag size={13} />
+        <span>{selectedTag ? `#${selectedTag.name}` : 'All Tags'}</span>
       </button>
       <button type="button" class="btn-mobile-new-note" onclick={handleCreateNew}>
-        + New Note
+        <IconPlus size={14} />
+        <span>New Note</span>
       </button>
     {/if}
   </div>
@@ -260,7 +274,8 @@
           onClear={() => handleSearch('')}
         />
         <button type="button" class="btn-create-header" onclick={handleCreateNew}>
-          + New Note
+          <IconPlus size={14} />
+          <span>New Note</span>
         </button>
       </div>
 
@@ -295,13 +310,16 @@
       {:else}
         <div class="no-selection-workspace">
           <div class="no-selection-card">
-            <span class="no-selection-icon">📝</span>
+            <div class="no-selection-icon-wrapper">
+              <IconNote size={32} />
+            </div>
             <h3 class="no-selection-title">Select a Note</h3>
             <p class="no-selection-desc">
               Choose a note from the list on the left to view or edit, or create a new note to begin writing.
             </p>
             <button type="button" class="btn-create-starter" onclick={handleCreateNew}>
-              + Create New Note
+              <IconPlus size={14} />
+              <span>Create New Note</span>
             </button>
           </div>
         </div>
@@ -318,23 +336,22 @@
     min-height: calc(100vh - 120px);
   }
 
-  /* Mobile Top Navigation */
   .mobile-nav-bar {
     display: none;
     align-items: center;
     justify-content: space-between;
-    padding: 0.5rem 0.75rem;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    padding: 0.5rem 0;
     margin-bottom: 0.75rem;
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
 
   .btn-back-nav {
-    background: #f1f5f9;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    background: #ffffff;
     border: 1px solid #cbd5e1;
-    color: #1e293b;
+    color: #0f172a;
     font-size: 0.8125rem;
     font-weight: 600;
     padding: 0.375rem 0.75rem;
@@ -349,27 +366,31 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 180px;
   }
 
   .btn-tag-drawer-toggle {
-    background: #f1f5f9;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    background: #ffffff;
     border: 1px solid #cbd5e1;
-    color: #334155;
+    color: #475569;
     font-size: 0.8125rem;
-    font-weight: 500;
     padding: 0.375rem 0.75rem;
     border-radius: 6px;
     cursor: pointer;
   }
 
   .btn-mobile-new-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
     background: #2563eb;
     color: #ffffff;
     border: none;
     font-size: 0.8125rem;
     font-weight: 600;
-    padding: 0.375rem 0.75rem;
+    padding: 0.375rem 0.875rem;
     border-radius: 6px;
     cursor: pointer;
   }
@@ -380,40 +401,39 @@
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     padding: 1rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 1rem;
   }
 
-  /* Desktop 3-Pane Layout */
   .master-detail-layout {
     display: grid;
-    grid-template-columns: 240px 360px 1fr;
+    grid-template-columns: 200px 320px 1fr;
     gap: 1.25rem;
-    align-items: stretch;
+    align-items: start;
     height: calc(100vh - 120px);
-    min-height: 550px;
   }
 
-  /* Left Sidebar Pane */
   .pane-sidebar {
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    padding: 1.25rem;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
+    height: 100%;
+    box-sizing: border-box;
     overflow-y: auto;
   }
 
   .sidebar-block {
     display: flex;
     flex-direction: column;
+    gap: 0.5rem;
   }
 
   .active-filters-summary {
-    padding-top: 1rem;
     border-top: 1px solid #f1f5f9;
-    gap: 0.5rem;
+    padding-top: 0.75rem;
   }
 
   .active-filter-header {
@@ -423,19 +443,18 @@
   }
 
   .filter-badge-label {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     color: #64748b;
   }
 
   .btn-reset-filters {
     background: none;
     border: none;
-    color: #ef4444;
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.6875rem;
+    color: #2563eb;
     cursor: pointer;
     padding: 0;
   }
@@ -446,44 +465,41 @@
 
   .filter-pill-item {
     font-size: 0.75rem;
+    color: #475569;
     background: #f8fafc;
-    color: #334155;
+    border: 1px solid #e2e8f0;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
-    border: 1px solid #e2e8f0;
   }
 
-  /* Middle Master List Pane */
   .pane-master-list {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    overflow: hidden;
+    height: 100%;
+    box-sizing: border-box;
   }
 
   .master-list-header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    flex-shrink: 0;
   }
 
   .btn-create-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
     background: #2563eb;
     color: #ffffff;
     border: none;
+    border-radius: 6px;
+    padding: 0.5625rem 0.875rem;
     font-size: 0.8125rem;
     font-weight: 600;
-    padding: 0.625rem 0.875rem;
-    border-radius: 8px;
-    cursor: pointer;
     white-space: nowrap;
+    cursor: pointer;
     transition: background 0.15s ease;
-    flex-shrink: 0;
   }
 
   .btn-create-header:hover {
@@ -493,15 +509,12 @@
   .master-list-scrollable {
     flex: 1;
     overflow-y: auto;
-    padding-right: 0.25rem;
+    padding-right: 0.125rem;
   }
 
-  /* Right Detail Workspace Pane */
   .pane-detail-workspace {
-    display: flex;
-    flex-direction: column;
     height: 100%;
-    overflow: hidden;
+    box-sizing: border-box;
   }
 
   .no-selection-workspace {
@@ -510,46 +523,57 @@
     justify-content: center;
     height: 100%;
     background: #ffffff;
-    border: 1px dashed #cbd5e1;
+    border: 1px solid #e2e8f0;
     border-radius: 8px;
     padding: 2rem;
+    box-sizing: border-box;
   }
 
   .no-selection-card {
-    text-align: center;
-    max-width: 320px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    text-align: center;
+    max-width: 320px;
     gap: 0.75rem;
   }
 
-  .no-selection-icon {
-    font-size: 3rem;
+  .no-selection-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: #f1f5f9;
+    color: #64748b;
+    border-radius: 10px;
   }
 
   .no-selection-title {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     font-weight: 600;
-    color: #1e293b;
+    color: #0f172a;
   }
 
   .no-selection-desc {
     margin: 0;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     color: #64748b;
     line-height: 1.5;
   }
 
   .btn-create-starter {
     margin-top: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
     background: #2563eb;
     color: #ffffff;
     border: none;
+    padding: 0.5rem 1.125rem;
     font-size: 0.875rem;
     font-weight: 600;
-    padding: 0.625rem 1.25rem;
     border-radius: 6px;
     cursor: pointer;
     transition: background 0.15s ease;
@@ -559,20 +583,13 @@
     background: #1d4ed8;
   }
 
-  /* Responsive Breakpoints */
-
-  /* Tablet (768px - 1023px): 2-Pane Layout */
-  @media (max-width: 1023px) and (min-width: 768px) {
+  @media (max-width: 1024px) {
     .master-detail-layout {
-      grid-template-columns: 320px 1fr;
+      grid-template-columns: 280px 1fr;
     }
 
     .pane-sidebar {
       display: none;
-    }
-
-    .mobile-nav-bar {
-      display: flex;
     }
 
     .mobile-tags-drawer {
@@ -580,40 +597,26 @@
     }
   }
 
-  /* Mobile (<768px): Single-Pane Flow */
-  @media (max-width: 767px) {
+  @media (max-width: 768px) {
+    .master-detail-layout {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+
     .mobile-nav-bar {
       display: flex;
     }
 
-    .mobile-tags-drawer {
-      display: block;
-    }
-
-    .master-detail-layout {
-      grid-template-columns: 1fr;
-      height: auto;
-      min-height: auto;
-    }
-
-    .pane-sidebar {
+    .master-detail-layout.show-list-mobile .pane-detail-workspace {
       display: none;
     }
 
-    .show-list-mobile .pane-master-list {
-      display: flex;
-    }
-
-    .show-list-mobile .pane-detail-workspace {
+    .master-detail-layout.show-editor-mobile .pane-master-list {
       display: none;
     }
 
-    .show-editor-mobile .pane-master-list {
+    .master-detail-layout.show-editor-mobile .pane-sidebar {
       display: none;
-    }
-
-    .show-editor-mobile .pane-detail-workspace {
-      display: flex;
     }
   }
 </style>

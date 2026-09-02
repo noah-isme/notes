@@ -1,5 +1,6 @@
 <script lang="ts">
   import { toast } from '$lib/stores/toast.svelte';
+  import { IconCheck, IconAlert, IconNote, IconClose } from './icons';
 </script>
 
 {#if toast.toasts.length > 0}
@@ -8,11 +9,11 @@
       <div class="toast-card {item.type}">
         <span class="toast-icon" aria-hidden="true">
           {#if item.type === 'success'}
-            ✓
+            <IconCheck size={14} />
           {:else if item.type === 'error'}
-            ⚠
+            <IconAlert size={14} />
           {:else}
-            ℹ
+            <IconNote size={14} />
           {/if}
         </span>
         <div class="toast-content">
@@ -24,7 +25,7 @@
           onclick={() => toast.remove(item.id)}
           aria-label="Close notification"
         >
-          &times;
+          <IconClose size={13} />
         </button>
       </div>
     {/each}
@@ -50,24 +51,25 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.875rem 1rem;
+    padding: 0.75rem 1rem;
     background: #ffffff;
     border-radius: 8px;
     box-shadow:
-      0 10px 15px -3px rgba(0, 0, 0, 0.1),
-      0 4px 6px -4px rgba(0, 0, 0, 0.1);
-    border-left: 4px solid #3b82f6;
-    animation: toast-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      0 4px 6px -1px rgba(0, 0, 0, 0.07),
+      0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid #2563eb;
+    animation: toast-in 0.15s ease-out;
   }
 
   @keyframes toast-in {
     from {
       opacity: 0;
-      transform: translateY(10px) scale(0.96);
+      transform: translateY(8px);
     }
     to {
       opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translateY(0);
     }
   }
 
@@ -90,11 +92,11 @@
   }
 
   .toast-card.info {
-    border-left-color: #3b82f6;
+    border-left-color: #2563eb;
   }
 
   .toast-card.info .toast-icon {
-    color: #3b82f6;
+    color: #2563eb;
     background: #eff6ff;
   }
 
@@ -102,11 +104,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: 9999px;
-    font-size: 0.875rem;
-    font-weight: 700;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
     flex-shrink: 0;
   }
 
@@ -117,9 +117,9 @@
 
   .toast-message {
     margin: 0;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 500;
-    color: #1e293b;
+    color: #0f172a;
     line-height: 1.4;
     word-break: break-word;
   }
@@ -128,8 +128,6 @@
     background: none;
     border: none;
     color: #94a3b8;
-    font-size: 1.25rem;
-    line-height: 1;
     padding: 0.25rem;
     cursor: pointer;
     border-radius: 4px;
@@ -140,7 +138,7 @@
   }
 
   .toast-close:hover {
-    color: #475569;
+    color: #0f172a;
     background: #f1f5f9;
   }
 </style>
