@@ -17,11 +17,12 @@
     IconArrowLeft,
   } from '$lib/components/icons';
 
+  import { onMount } from 'svelte';
+
   let { data, form }: { data: PageData; form?: ActionData } = $props();
 
   // Active UI states
   let selectedNoteId = $state<string | null>(null);
-  let activeNote = $state<NoteCardData | null>(null);
   let searchBarRef = $state<any>(null);
   let editorViewMode = $state<'edit' | 'preview' | 'split'>('split');
   let isCreatingNew = $state(false);
@@ -88,7 +89,6 @@
               isEditorDirty = false;
               if (result.note?.id) {
                 selectedNoteId = result.note.id;
-                activeNote = result.note;
                 isCreatingNew = false;
               }
               await goto($page.url.toString(), { invalidateAll: true });
@@ -123,33 +123,27 @@
     }
   }
 
-  // Reactive local notes array (decoupled from direct prop mutation in Svelte 5)
+  // Reactive local notes array
   let localNotes = $state<NoteCardData[]>([]);
 
   $effect(() => {
     localNotes = data.notes;
   });
 
-  // Derived selected note object (decoupled from search/tag list filtering)
-  let selectedNote = $derived(
-    isCreatingNew
-      ? null
-      : (activeNote ?? (selectedNoteId ? localNotes.find((n) => n.id === selectedNoteId) ?? null : null))
-  );
-
-  // Sync activeNote with localNotes updates
-  $effect(() => {
-    if (selectedNoteId) {
-      const match = localNotes.find((n) => n.id === selectedNoteId);
-      if (match && !isEditorDirty) {
-        activeNote = match;
-      }
-    } else if (!isCreatingNew && localNotes.length > 0 && !activeNote) {
-      if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-        selectedNoteId = localNotes[0].id;
-        activeNote = localNotes[0];
+  // Automatically select first note on desktop mount if none selected
+  onMount(() => {
+    if (!selectedNoteId && !isCreatingNew && data.notes.length > 0) {
+      if (window.innerWidth >= 768) {
+        selectedNoteId = data.notes[0].id;
       }
     }
+  });
+
+  // Pure derived selected note object (no state mutation side effects)
+  let selectedNote = $derived.by(() => {
+    if (isCreatingNew) return null;
+    if (!selectedNoteId) return null;
+    return localNotes.find((n) => n.id === selectedNoteId) ?? null;
   });
 
   let lastHandledForm: any = null;
@@ -230,7 +224,6 @@
         showUnsavedDialog = false;
         if (result.note?.id) {
           selectedNoteId = result.note.id;
-          activeNote = result.note;
           isCreatingNew = false;
         }
         await goto($page.url.toString(), { invalidateAll: true });
@@ -288,7 +281,6 @@
     }
     confirmIfDirty(() => {
       selectedNoteId = note.id;
-      activeNote = note;
       isCreatingNew = false;
       mobileView = 'editor';
     });
@@ -297,7 +289,6 @@
   function handleEditNote(note: NoteCardData) {
     confirmIfDirty(() => {
       selectedNoteId = note.id;
-      activeNote = note;
       isCreatingNew = false;
       editorViewMode = 'edit';
       mobileView = 'editor';
@@ -311,7 +302,6 @@
     }
     confirmIfDirty(() => {
       selectedNoteId = null;
-      activeNote = null;
       isCreatingNew = true;
       mobileView = 'editor';
     });
@@ -322,10 +312,8 @@
       isCreatingNew = false;
       if (localNotes.length > 0) {
         selectedNoteId = localNotes[0].id;
-        activeNote = localNotes[0];
       } else {
         selectedNoteId = null;
-        activeNote = null;
       }
       mobileView = 'list';
     });

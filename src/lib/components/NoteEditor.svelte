@@ -90,25 +90,33 @@
     return sortedA.every((tag, i) => tag === sortedB[i]);
   }
 
-  // Sync props when selected note changes
+  let currentLoadedNoteId = $state<string | null | undefined>(undefined);
+  let currentLoadedIsNew = $state<boolean | undefined>(undefined);
+
+  // Sync props only when selected note identity changes
   $effect(() => {
-    const currentNote = note;
+    const noteId = note?.id ?? null;
     const currentIsNew = isNew;
 
-    initialTitle = currentNote?.title ?? '';
-    initialContent = currentNote?.content ?? '';
-    initialIsPinned = currentNote?.isPinned ?? false;
-    initialTagList = currentNote?.tags ? currentNote.tags.map((t) => t.name) : [];
+    if (noteId !== currentLoadedNoteId || currentIsNew !== currentLoadedIsNew) {
+      currentLoadedNoteId = noteId;
+      currentLoadedIsNew = currentIsNew;
 
-    title = initialTitle;
-    content = initialContent;
-    debouncedContent = initialContent;
-    isPinned = initialIsPinned;
-    isPublic = currentNote?.isPublic ?? false;
-    shareToken = currentNote?.shareToken ?? null;
-    tagList = [...initialTagList];
-    tagInput = '';
-    titleTouched = false;
+      initialTitle = note?.title ?? '';
+      initialContent = note?.content ?? '';
+      initialIsPinned = note?.isPinned ?? false;
+      initialTagList = note?.tags ? note.tags.map((t) => t.name) : [];
+
+      title = initialTitle;
+      content = initialContent;
+      debouncedContent = initialContent;
+      isPinned = initialIsPinned;
+      isPublic = note?.isPublic ?? false;
+      shareToken = note?.shareToken ?? null;
+      tagList = [...initialTagList];
+      tagInput = '';
+      titleTouched = false;
+    }
   });
 
   // Debounce live markdown preview re-rendering by 200ms
@@ -141,11 +149,13 @@
     return titleChanged || contentChanged || pinChanged || tagsChanged;
   });
 
-  // Sync dirty state to bindable prop and notify callback
+  // Sync dirty state to bindable prop and notify callback only on actual value change
   $effect(() => {
     const currentDirty = isDirtyDerived;
-    isDirty = currentDirty;
-    onDirtyChange?.(currentDirty);
+    if (isDirty !== currentDirty) {
+      isDirty = currentDirty;
+      onDirtyChange?.(currentDirty);
+    }
   });
 
   // Public methods callable via bind:this
