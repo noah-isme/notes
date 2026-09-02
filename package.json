@@ -1,0 +1,44 @@
+{
+  "name": "notes-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "vitest run tests/e2e",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/lib/server/db/migrate.ts",
+    "db:seed": "tsx src/lib/server/db/seed.ts",
+    "db:push": "drizzle-kit push",
+    "db:verify": "tsx src/lib/server/db/verify.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@sveltejs/adapter-vercel": "^5.5.0",
+    "clsx": "^2.1.1",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.38.4",
+    "postgres": "^3.4.5",
+    "tailwind-merge": "^3.0.1"
+  },
+  "devDependencies": {
+    "@sveltejs/kit": "^2.16.1",
+    "@sveltejs/vite-plugin-svelte": "^4.0.4",
+    "@types/node": "^20.17.19",
+    "drizzle-kit": "^0.30.4",
+    "svelte": "^5.19.7",
+    "svelte-check": "^4.1.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.14",
+    "vitest": "^2.1.8"
+  }
+}
