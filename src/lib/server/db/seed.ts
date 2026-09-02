@@ -13,6 +13,7 @@ const connectionString =
 
 const sampleUsers = [
   {
+    name: 'Demo User',
     email: 'demo@example.com',
     password: 'DemoPassword123!',
     notes: [
@@ -124,6 +125,7 @@ Feel free to edit this note, add tags, or create new notes from the sidebar!`,
     ],
   },
   {
+    name: 'Jane Developer',
     email: 'jane.developer@example.com',
     password: 'NotesPassword2026!',
     notes: [
@@ -171,13 +173,20 @@ async function seed() {
         const [newUser] = await db
           .insert(users)
           .values({
+            name: userData.name,
             email: userData.email,
             passwordHash,
           })
           .returning();
         existingUser = newUser;
-        console.log(`   ✨ Created user: ${userData.email}`);
+        console.log(`   ✨ Created user: ${userData.email} (${userData.name})`);
       } else {
+        if (!existingUser.name && userData.name) {
+          await db
+            .update(users)
+            .set({ name: userData.name, updatedAt: new Date() })
+            .where(eq(users.id, existingUser.id));
+        }
         console.log(`   ℹ️ User already exists: ${userData.email}`);
       }
 

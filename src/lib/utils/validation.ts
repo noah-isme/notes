@@ -26,6 +26,15 @@ export function validatePassword(password: unknown): boolean {
   return password.length >= 6 && password.length <= 255;
 }
 
+/**
+ * Validates display name: optional or string up to 100 characters.
+ */
+export function validateDisplayName(name: unknown): boolean {
+  if (name === null || name === undefined || name === '') return true;
+  if (typeof name !== 'string') return false;
+  return name.trim().length <= 100;
+}
+
 export interface NoteInput {
   title?: unknown;
   content?: unknown;

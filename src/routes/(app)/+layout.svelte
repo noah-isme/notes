@@ -8,13 +8,16 @@
 <div class="app-layout">
   <header class="app-header">
     <div class="header-content">
-      <div class="logo">
+      <a href="/" class="logo">
         <span class="logo-icon">📝</span>
         <span class="logo-text">Notes</span>
-      </div>
+      </a>
       {#if data.user}
         <div class="user-menu">
-          <span class="user-email">{data.user.email}</span>
+          <a href="/profile" class="user-profile-btn" title="Manage Account & Profile">
+            <span class="avatar-chip">👤</span>
+            <span class="user-display-label">{data.user.name || data.user.email}</span>
+          </a>
           <form action="/logout" method="POST" class="logout-form">
             <button type="submit" class="btn-logout">Logout</button>
           </form>
@@ -67,17 +70,51 @@
     font-size: 1.25rem;
     font-weight: 700;
     color: #1e293b;
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+  }
+
+  .logo:hover {
+    opacity: 0.85;
   }
 
   .user-menu {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.875rem;
   }
 
-  .user-email {
+  .user-profile-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
     font-size: 0.875rem;
-    color: #64748b;
+    color: #334155;
+    transition: all 0.15s ease;
+    max-width: 220px;
+  }
+
+  .user-profile-btn:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+
+  .avatar-chip {
+    font-size: 0.9375rem;
+    line-height: 1;
+  }
+
+  .user-display-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
   }
 
   .btn-logout {

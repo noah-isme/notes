@@ -5,6 +5,7 @@ declare global {
       user: {
         id: string;
         email: string;
+        name?: string | null;
       } | null;
       session: {
         id: string;

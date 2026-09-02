@@ -16,6 +16,7 @@ export interface SessionValidationResult {
   user: {
     id: string;
     email: string;
+    name: string | null;
   } | null;
 }
 
@@ -103,6 +104,7 @@ export async function validateSessionToken(token: string): Promise<SessionValida
       user: {
         id: users.id,
         email: users.email,
+        name: users.name,
       },
       session: sessions,
     })
@@ -173,4 +175,87 @@ export function deleteSessionTokenCookie(event: { cookies: Cookies } | RequestEv
   event.cookies.delete(SESSION_COOKIE_NAME, {
     path: '/',
   });
+}
+
+/**
+ * Retrieves full user record by ID.
+ */
+export async function getUserById(userId: string): Promise<User | null> {
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  return user ?? null;
+}
+
+/**
+ * Updates user profile (name, email).
+ */
+export async function updateUserProfile(
+  userId: string,
+  data: { name?: string | null; email?: string }
+): Promise<{ success: boolean; user?: User; error?: string }> {
+  // Check if updating email to another existing account
+  if (data.email) {
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalizedEmail));
+
+    if (existing && existing.id !== userId) {
+      return { success: false, error: 'Email is already in use by another account' };
+    }
+  }
+
+  const updateValues: Partial<User> = {
+    updatedAt: new Date(),
+  };
+
+  if (data.name !== undefined) {
+    updateValues.name = data.name ? data.name.trim() : null;
+  }
+
+  if (data.email !== undefined) {
+    updateValues.email = data.email.trim().toLowerCase();
+  }
+
+  const [updatedUser] = await db
+    .update(users)
+    .set(updateValues)
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (!updatedUser) {
+    return { success: false, error: 'User not found' };
+  }
+
+  return { success: true, user: updatedUser };
+}
+
+/**
+ * Updates user password after verifying current password.
+ */
+export async function updateUserPassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> {
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  if (!user) {
+    return { success: false, error: 'User not found' };
+  }
+
+  const isCurrentValid = await verifyPassword(currentPassword, user.passwordHash);
+  if (!isCurrentValid) {
+    return { success: false, error: 'Current password is incorrect' };
+  }
+
+  const newHash = await hashPassword(newPassword);
+  await db
+    .update(users)
+    .set({
+      passwordHash: newHash,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+
+  return { success: true };
 }
