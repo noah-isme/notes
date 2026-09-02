@@ -437,6 +437,7 @@ describe('Challenger M3: Comprehensive Notes CRUD, Boundary & Filter Stress Veri
       expect(unpinnedOnly.every((n) => n.isPinned === false)).toBe(true);
 
       // 4. Update note1 to be pinned -> now both note3 and note1 are pinned, note1 was updated most recently so note1 should come first
+      await new Promise((r) => setTimeout(r, 50));
       await notesService.updateNote(user.id, note1.id, { isPinned: true });
 
       const updatedList = await notesService.getNotes(user.id);

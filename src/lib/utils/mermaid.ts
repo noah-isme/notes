@@ -63,7 +63,7 @@ let idCounter = 0;
  * Check if Mermaid can be executed in the current environment.
  */
 export function isMermaidSupported(): boolean {
-  return typeof window !== 'undefined' && typeof document !== 'undefined' && browser;
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
 
 /**
@@ -98,7 +98,7 @@ export async function getMermaid(): Promise<Mermaid | null> {
       mermaidInstance = mermaidModule.default;
       mermaidInstance.initialize({
         startOnLoad: false,
-        securityLevel: 'strict',
+        securityLevel: 'loose',
         suppressErrorRendering: true,
         theme: 'base',
         themeVariables: SLATE_THEME_VARIABLES,
@@ -140,7 +140,7 @@ export async function initializeMermaid(theme: 'slate' | 'default' = 'slate'): P
 
   const config: MermaidConfig = {
     startOnLoad: false,
-    securityLevel: 'strict',
+    securityLevel: 'loose',
     suppressErrorRendering: true,
   };
 

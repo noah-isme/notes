@@ -25,21 +25,26 @@
     email = data.profile.email;
   });
 
+  let lastHandledForm: any = null;
+
   // Handle toast notifications from form action responses
   $effect(() => {
-    if (form?.profileError) {
-      toast.error(form.profileError);
-    } else if (form?.profileSuccess) {
-      toast.success(form.profileMessage || 'Profile updated successfully');
-    }
+    if (form && form !== lastHandledForm) {
+      lastHandledForm = form;
+      if (form.profileError) {
+        toast.error(form.profileError);
+      } else if (form.profileSuccess) {
+        toast.success(form.profileMessage || 'Profile updated successfully');
+      }
 
-    if (form?.passwordError) {
-      toast.error(form.passwordError);
-    } else if (form?.passwordSuccess) {
-      toast.success(form.passwordMessage || 'Password updated successfully');
-      currentPassword = '';
-      newPassword = '';
-      confirmPassword = '';
+      if (form.passwordError) {
+        toast.error(form.passwordError);
+      } else if (form.passwordSuccess) {
+        toast.success(form.passwordMessage || 'Password updated successfully');
+        currentPassword = '';
+        newPassword = '';
+        confirmPassword = '';
+      }
     }
   });
 

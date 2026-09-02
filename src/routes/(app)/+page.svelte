@@ -38,17 +38,22 @@
     }
   });
 
-  // Handle toast notifications from form action responses
+  let lastHandledForm: any = null;
+
+  // Handle toast notifications from form action responses safely once per submission
   $effect(() => {
-    if (form?.error) {
-      toast.error(form.error);
-    } else if (form?.success) {
-      if (form.note) {
-        toast.success(`Note "${form.note.title}" saved successfully`);
-        selectedNoteId = form.note.id;
-        isCreatingNew = false;
-      } else {
-        toast.success('Action completed successfully');
+    if (form && form !== lastHandledForm) {
+      lastHandledForm = form;
+      if (form.error) {
+        toast.error(form.error);
+      } else if (form.success) {
+        if (form.note) {
+          toast.success(`Note "${form.note.title}" saved successfully`);
+          selectedNoteId = form.note.id;
+          isCreatingNew = false;
+        } else {
+          toast.success('Action completed successfully');
+        }
       }
     }
   });

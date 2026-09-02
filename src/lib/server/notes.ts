@@ -7,7 +7,7 @@ import {
   type Tag,
   type NoteWithTags,
 } from '$lib/server/db/schema';
-import { eq, and, or, ilike, desc, asc, inArray } from 'drizzle-orm';
+import { eq, and, or, ilike, desc, asc, inArray, sql } from 'drizzle-orm';
 import { validateNoteInput, validateTagName } from '$lib/utils/validation';
 
 export type { Note, Tag, NoteWithTags };
@@ -240,8 +240,8 @@ export async function updateNote(
     }
   }
 
-  const updates: Partial<typeof notes.$inferInsert> = {
-    updatedAt: new Date(),
+  const updates: Record<string, any> = {
+    updatedAt: sql`NOW()`,
   };
   if (data.title !== undefined) updates.title = data.title.trim();
   if (data.content !== undefined) updates.content = data.content;
