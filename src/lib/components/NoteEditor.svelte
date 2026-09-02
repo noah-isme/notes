@@ -1,5 +1,12 @@
+<script module lang="ts">
+  function getPropValue<T>(getter: () => T): T {
+    return getter();
+  }
+</script>
+
 <script lang="ts">
   import { renderMarkdown } from '$lib/utils/markdown';
+  import { mermaidRenderer } from '$lib/actions/mermaid';
   import {
     IconPin,
     IconEdit,
@@ -44,10 +51,11 @@
     onDelete,
   }: NoteEditorProps = $props();
 
-  let title = $state(note?.title ?? '');
-  let content = $state(note?.content ?? '');
-  let isPinned = $state(note?.isPinned ?? false);
-  let tagList = $state<string[]>(note?.tags ? note.tags.map((t) => t.name) : []);
+  let title = $state(getPropValue(() => note?.title ?? ''));
+  let content = $state(getPropValue(() => note?.content ?? ''));
+  let debouncedContent = $state(getPropValue(() => note?.content ?? ''));
+  let isPinned = $state(getPropValue(() => note?.isPinned ?? false));
+  let tagList = $state<string[]>(getPropValue(() => (note?.tags ? note.tags.map((t) => t.name) : [])));
   let tagInput = $state('');
   let viewMode = $state<'edit' | 'preview' | 'split'>('split');
   let titleTouched = $state(false);
@@ -56,13 +64,26 @@
   $effect(() => {
     title = note?.title ?? '';
     content = note?.content ?? '';
+    debouncedContent = note?.content ?? '';
     isPinned = note?.isPinned ?? false;
     tagList = note?.tags ? note.tags.map((t) => t.name) : [];
     tagInput = '';
     titleTouched = false;
   });
 
-  let renderedPreview = $derived(renderMarkdown(content));
+  // Debounce live markdown preview re-rendering by 200ms
+  $effect(() => {
+    const currentContent = content;
+    const timer = setTimeout(() => {
+      debouncedContent = currentContent;
+    }, 200);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  });
+
+  let renderedPreview = $derived(renderMarkdown(debouncedContent));
   let titleCharCount = $derived(title.length);
   let isTitleValid = $derived(title.trim().length > 0 && title.trim().length <= 200);
   let tagsFormatted = $derived(tagList.join(', '));
@@ -265,7 +286,7 @@
       {#if viewMode === 'preview' || viewMode === 'split'}
         <div class="workspace-pane preview-pane" role="region" aria-label="Markdown Preview">
           {#if renderedPreview}
-            <div class="markdown-preview">
+            <div class="markdown-preview" use:mermaidRenderer={renderedPreview}>
               <!-- eslint-disable-next-line svelte/no-at-html-tags -->
               {@html renderedPreview}
             </div>

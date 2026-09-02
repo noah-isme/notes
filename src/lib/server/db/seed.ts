@@ -58,23 +58,58 @@ let double = $derived(count * 2);
 Feel free to edit this note, add tags, or create new notes from the sidebar!`,
       },
       {
-        title: '📐 System Architecture & Stack Overview',
+        title: 'System Architecture & Stack Overview',
         isPinned: true,
-        tagNames: ['work', 'svelte', 'postgres'],
+        tagNames: ['architecture', 'diagrams', 'svelte', 'postgres'],
         content: `## System Architecture & Technical Stack
 
-### 🚀 Frontend
-- **Framework**: SvelteKit 2 + Svelte 5 (Runes: \`$state\`, \`$derived\`, \`$props\`, \`$effect\`)
-- **Styling**: Modern, responsive, clean CSS design system with desktop 3-pane & mobile drawer
-- **Markdown**: Custom isomorphic parser with XSS sanitization
+### Interactive System Architecture Diagram
+\`\`\`mermaid
+flowchart TD
+    Client[Web Browser / Mobile View] -->|HTTPS Requests| SvelteKit[SvelteKit 2 App / Vercel Serverless]
+    SvelteKit -->|Session Token Auth| AuthEngine[Auth & Session Engine]
+    SvelteKit -->|Isomorphic Markdown & Diagram Parser| MermaidEngine[Mermaid.js & Markdown Renderer]
+    SvelteKit -->|Drizzle ORM Connection Pool| Postgres[(PostgreSQL Database)]
+    
+    subgraph ClientLayer [Client Layer]
+        Client
+        MermaidEngine
+    end
+    
+    subgraph ServerlessEdge [Vercel Edge & Serverless]
+        SvelteKit
+        AuthEngine
+    end
 
-### 🗄️ Backend & Database
-- **Database**: PostgreSQL with connection pooling (\`postgres.js\`, \`prepare: false\`)
-- **ORM**: Drizzle ORM with Drizzle Kit schema migrations
-- **Authentication**: Salted \`scrypt\` password hashing and DB-backed cryptographic sessions
+    subgraph DataStore [Database Tier]
+        Postgres
+    end
+\`\`\`
 
-### ☁️ Deployment
-- **Adapter**: \`@sveltejs/adapter-vercel\` targeting Node.js 20.x runtime`,
+### Authentication & Request Flow
+\`\`\`mermaid
+sequenceDiagram
+    autonumber
+    actor User as User Browser
+    participant App as SvelteKit Server
+    participant Auth as Session Service
+    participant DB as PostgreSQL
+    
+    User->>App: POST /login (email, password)
+    App->>Auth: verifyPassword(password, hash)
+    Auth->>DB: Query user by email
+    DB-->>Auth: User record & scrypt hash
+    Auth-->>App: Password valid
+    App->>DB: Create session token
+    DB-->>App: Session stored
+    App-->>User: Set session cookie & redirect to /
+\`\`\`
+
+### Technical Stack Highlights
+- **Frontend**: SvelteKit 2 + Svelte 5 (Runes: \`$state\`, \`$derived\`, \`$props\`, \`$effect\`)
+- **Diagrams**: Native Mermaid.js integration with real-time editing, pan/zoom, and SVG export
+- **Database**: PostgreSQL with Drizzle ORM and connection pooling
+- **Deployment**: Serverless on Vercel via \`@sveltejs/adapter-vercel\``,
       },
       {
         title: '💡 Feature Ideas & Backlog',

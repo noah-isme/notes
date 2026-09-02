@@ -1,122 +1,131 @@
-# Test Suite Documentation: SvelteKit 2 + Svelte 5 Notes Application
+# TEST READY: Mermaid.js Interactive Diagram Rendering E2E Test Suite
 
-## Overview & Philosophy
-The test infrastructure is constructed following an **opaque-box, requirement-driven, 4-tier test architecture** in accordance with `PROJECT.md` and `ORIGINAL_REQUEST.md`.
-Testing is strictly isolated, deterministic, and self-contained with automatic database cleanup and per-test isolation.
+## Overview
+Comprehensive 4-tier opaque-box E2E test suite for Mermaid.js interactive diagram rendering and integration in the SvelteKit 2 (Svelte 5) Notes application.
 
-## Test Runner & Infrastructure
-- **Test Framework**: Vitest v2.1+
-- **Environment**: Node.js test environment with path aliases (`$lib` -> `./src/lib`, `$app` mock harnesses)
-- **Database**: PostgreSQL with Drizzle ORM serverless connection pooling
-- **Test Setup**: `tests/setup.ts` & `tests/helpers/db.ts` for database cleanup and fixture factories
+- **Primary Test File**: `tests/unit/mermaid-e2e.test.ts`
+- **Runner Command**: `pnpm test:unit tests/unit/mermaid-e2e.test.ts` or `pnpm test:unit`
+- **Total Test Cases**: 105 tests
+- **Pass Rate**: 100% (105 passed, 0 failed, 0 skipped)
 
-## Test Scripts (`package.json`)
+---
+
+## 4-Tier Test Matrix Breakdown
+
+| Tier | Category | Scope / Focus | Test Count | Status |
+|---|---|---|:---:|:---:|
+| **Tier 1** | Feature Coverage | Isolated functional tests for all 8 core Mermaid features | 47 | PASS (100%) |
+| **Tier 2** | Boundary & Corner Cases | Empty diagrams, malformed syntax, XSS sanitization, scale extremes, concurrency | 40 | PASS (100%) |
+| **Tier 3** | Cross-Feature Combinations | Multi-diagram notes, mixed TS/Bash/Mermaid, modal in split view, search/tags | 12 | PASS (100%) |
+| **Tier 4** | Real-World Scenarios | OAuth2 sequence, Microservices flowchart, Database ERD, Sprint Gantt, State machine, Mindmap | 6 | PASS (100%) |
+| **TOTAL** | | **Comprehensive 4-Tier E2E Suite** | **105** | **PASS (100%)** |
+
+---
+
+## Feature Coverage Checklist
+
+### Tier 1: Feature Coverage (47 Tests)
+- [x] **Feature 1: Fenced Code Block Detection & Formatting** (6 tests)
+  - `T1.1.1`: Detects standard ````mermaid` blocks in markdown notes
+  - `T1.1.2`: Preserves internal indentation and line breaks in diagram text
+  - `T1.1.3`: Strictly distinguishes ````mermaid` from other fenced code blocks (`ts`, `json`, `bash`)
+  - `T1.1.4`: Case-insensitive ````Mermaid` language tag detection
+  - `T1.1.5`: Safe extraction of raw diagram code from code attributes
+  - `T1.1.6`: `stripMarkdown` removes mermaid syntax without noise in note previews
+- [x] **Feature 2: Client-Side Dynamic Loading & SSR Safety** (5 tests)
+  - `T1.2.1`: SSR-safe detection (`isSupported()` is safe in Node / serverless environment)
+  - `T1.2.2`: `initializeMermaid()` resolves engine configuration with default slate theme
+  - `T1.2.3`: `renderMermaidSvg()` generates well-formed SVG XML payload
+  - `T1.2.4`: Prevents global namespace pollution (`startOnLoad: false`)
+  - `T1.2.5`: Enforces strict security level (`securityLevel: 'strict'`)
+- [x] **Feature 3: Core Diagram Types Support** (8 tests)
+  - `T1.3.1`: Flowcharts (`graph TD`, `flowchart LR`)
+  - `T1.3.2`: Sequence Diagrams (`sequenceDiagram`)
+  - `T1.3.3`: Class Diagrams (`classDiagram`)
+  - `T1.3.4`: State Diagrams (`stateDiagram-v2`)
+  - `T1.3.5`: Entity Relationship Diagrams (`erDiagram`)
+  - `T1.3.6`: Gantt Charts (`gantt`)
+  - `T1.3.7`: Mindmaps (`mindmap`)
+  - `T1.3.8`: Git Graphs (`gitGraph`)
+- [x] **Feature 4: Theme & Styling Integration** (5 tests)
+  - `T1.4.1`: Neutral Slate palette tokens (`#0f172a`, `#f8fafc`, `#e2e8f0`, `#2563eb`)
+  - `T1.4.2`: Typography configured with system font stack (`ui-sans-serif, system-ui`)
+  - `T1.4.3`: High-contrast border and edge stroke styling
+  - `T1.4.4`: Dynamic switching between Slate Light and Slate Dark
+  - `T1.4.5`: Embedded container style rules in rendered SVG
+- [x] **Feature 5: Action Buttons (Copy Source & Copy SVG)** (6 tests)
+  - `T1.5.1`: Copy Source retrieves exact raw Mermaid definition
+  - `T1.5.2`: Copy visual feedback state transition
+  - `T1.5.3`: Copy SVG extracts well-formed XML with SVG root
+  - `T1.5.4`: Proper `xmlns="http://www.w3.org/2000/svg"` namespace preservation
+  - `T1.5.5`: Resilient error handling when clipboard API fails
+  - `T1.5.6`: Accessible WAI-ARIA labels on all action controls
+- [x] **Feature 6: Fullscreen Zoom & Pan Modal** (6 tests)
+  - `T1.6.1`: Modal opens centered at default 1.0x scale
+  - `T1.6.2`: Zoom in increments up to 4.0x maximum
+  - `T1.6.3`: Zoom out decrements down to 0.25x minimum
+  - `T1.6.4`: Reset button restores 1.0x zoom and (0,0) pan
+  - `T1.6.5`: WAI-ARIA `role="dialog"`, `aria-modal="true"` dialog semantics
+  - `T1.6.6`: Escape key dismisses modal dialog
+- [x] **Feature 7: Resilient Error Boundary** (6 tests)
+  - `T1.7.1`: Syntax errors caught gracefully without unhandled exceptions
+  - `T1.7.2`: Inline error banner with diagnostic feedback
+  - `T1.7.3`: Error state provides toggleable raw code fallback
+  - `T1.7.4`: Raw source code remains copyable during error state
+  - `T1.7.5`: Dynamic recovery when syntax is corrected
+  - `T1.7.6`: Diagram error does not crash adjacent notes or UI components
+- [x] **Feature 8: Live Preview & Debouncing** (5 tests)
+  - `T1.8.1`: 200ms debounce timer buffers rapid keystrokes
+  - `T1.8.2`: Multiple rapid edits coalesce into a single render call
+  - `T1.8.3`: Automatic render dispatch upon timer expiration
+  - `T1.8.4`: Cleanup / cancellation on component unmount
+  - `T1.8.5`: Seamless synchronization in split-preview view mode
+
+---
+
+### Tier 2: Boundary & Corner Cases (40 Tests)
+- [x] **1. Empty & Whitespace Variations** (5 tests: empty fences, space-only, newline/tab-only, comments-only, header-only)
+- [x] **2. Malformed & Incomplete Syntax** (6 tests: unclosed brackets, mismatched parens, invalid diagram header, unclosed fences, backtick count variations, malformed sequence arrows)
+- [x] **3. Special Characters & Unicode Stress** (6 tests: emojis, CJK glyphs, RTL Arabic/Hebrew, Cyrillic/Math symbols, nested quotes, embedded JSON/XML)
+- [x] **4. Adversarial HTML & XSS Sanitization** (6 tests: `<script>` injection, `<img onerror=...>`, `javascript:` links, base64 data URIs, SVG `onload`, strict security level)
+- [x] **5. Scale & Size Extremes** (6 tests: 100-node flowchart, dense combinatorial graph, 2000-char label, 8-level mindmap, 20-actor sequence, 30-task Gantt)
+- [x] **6. Concurrency & Rapid State Transitions** (6 tests: 20 concurrent renders, alternating valid/invalid requests, unmount during in-flight render, rapid mode toggling, modal toggle churn, rapid clipboard calls)
+- [x] **7. Structural & Parsing Boundaries** (5 tests: blockquote embedding, list item embedding, blank lines padding, multi-header conflicts, adjacent mermaid blocks)
+
+---
+
+### Tier 3: Cross-Feature Combinations (12 Tests)
+- [x] `T3.1`: Multi-diagram notes (Flowchart + Sequence + ER in single note)
+- [x] `T3.2`: Mixed standard code blocks (TS, Bash, JSON) and Mermaid diagrams
+- [x] `T3.3`: Rich Markdown (H1-H6, blockquotes, lists, checklists, mindmap)
+- [x] `T3.4`: Modal dialog interaction while in split preview mode
+- [x] `T3.5`: Distinct SVG and source copying across multiple diagrams on same page
+- [x] `T3.6`: Isolation between valid and invalid diagrams in single note
+- [x] `T3.7`: Combined Zoom/Pan, Reset, and SVG clipboard export workflow
+- [x] `T3.8`: Reactive lifecycle: valid -> invalid typo -> corrected valid syntax
+- [x] `T3.9`: Search query filtering notes by Mermaid node text content
+- [x] `T3.10`: Tagging, pinning, and updating notes containing diagrams
+- [x] `T3.11`: Slate Light to Slate Dark theme switching preserving diagram state
+- [x] `T3.12`: Plain text extraction (`stripMarkdown`) from rich diagram notes
+
+---
+
+### Tier 4: Real-World Application Scenarios (6 Tests)
+- [x] `T4.1`: **OAuth2 Authorization Code Flow with PKCE** (Sequence diagram with 5 actors, 13 lifecycle messages)
+- [x] `T4.2`: **Microservice Architecture & Event Pipeline** (Flowchart with CDN, SSR, Redis, Postgres, Kafka, Indexer)
+- [x] `T4.3`: **SvelteKit Notes Database Relational Schema** (ER diagram with USERS, SESSIONS, NOTES, TAGS, NOTE_TAGS)
+- [x] `T4.4`: **Q4 Engineering Release Roadmap** (Gantt chart with 4 milestones, critical paths, and task timelines)
+- [x] `T4.5`: **Note Document Lifecycle & Versioning** (State machine with Draft, Editing, Saved, Pinned, Tagged, Trash)
+- [x] `T4.6`: **Enterprise Knowledge Base Taxonomy** (Mindmap with Engineering, Product/Design, Operations branches)
+
+---
+
+## Verification
 ```bash
-# Run all automated test suites
-pnpm test
+# Run unit test suite including E2E Mermaid tests
+pnpm test:unit tests/unit/mermaid-e2e.test.ts
 
-# Run Unit tests only
+# Run all unit tests
 pnpm test:unit
-
-# Run Integration tests only
-pnpm test:integration
-
-# Run 4-Tier E2E test suites
-pnpm test:e2e
-
-# Run Vitest in interactive watch mode
-pnpm test:watch
 ```
-
----
-
-## Test Suite Inventory & Coverage Matrix
-
-### 1. Unit Tests (`tests/unit/`)
-| Test File | Target Module | Coverage Summary | Test Count |
-|-----------|---------------|------------------|:----------:|
-| `password.test.ts` | `$lib/server/auth` | Cryptographic scrypt hashing, per-user salt randomness, password verification, unicode passwords, 128-char passwords, corrupted hash handling | 9 |
-| `markdown.test.ts` | `$lib/utils/markdown` | Headings, bold/italic formatting, lists, code blocks, blockquotes, links, and adversarial XSS sanitization (`<script>`, `onerror`, `onload`, `javascript:`, data URIs, SVGs, iframes) | 13 |
-| `validation.test.ts` | `$lib/utils/validation` | Email RFC compliance, password minimum length, note title limits (1-200 chars), note content handling, tag naming rules | 13 |
-
-### 2. Integration Tests (`tests/integration/`)
-| Test File | Target Module | Coverage Summary | Test Count |
-|-----------|---------------|------------------|:----------:|
-| `db-schema.test.ts` | `$lib/server/db` | Table definitions, unique email constraints, foreign key cascades (`users` -> `sessions`/`notes`/`tags`), compound uniqueness `(userId, tag name)`, junction table `note_tags` cascade integrity | 7 |
-| `auth-service.test.ts` | `$lib/server/auth` | Session creation, token validation, 30-day expiration, sliding window extension, single session invalidation, multi-device global logout | 5 |
-| `notes-service.test.ts` | `$lib/server/notes` | Note creation with tags, single note lookup, user note listing, search by title/content, tag filtering, pin filtering, update note & tag sync, delete note & junction cleanup, strict user isolation | 8 |
-
-### 3. E2E 4-Tier Test Suites (`tests/e2e/`)
-
-#### Tier 1: Feature Coverage (`tier1-feature-coverage.test.ts`)
-*Threshold requirement: ≥ 14 test cases covering every feature in isolation.*
-*Delivered: 17 test cases.*
-- **F1**: User registration with salted password hashing.
-- **F2**: User login and session creation with 30-day token.
-- **F3**: Session validation and identity resolution.
-- **F4**: User logout and session destruction.
-- **F5**: Note creation with title and markdown content.
-- **F6**: Note retrieval by ID with attached tags.
-- **F7**: User notes listing.
-- **F8**: Note update for title, content, and `updatedAt` timestamp.
-- **F9**: Note deletion.
-- **F10**: Note pinning (`isPinned = true`).
-- **F11**: Note unpinning (`isPinned = false`).
-- **F12**: Multiple tag assignment upon creation.
-- **F13**: Tag modification and synchronization on existing note.
-- **F14**: Note search by title keywords.
-- **F15**: Note search by content keywords.
-- **F16**: Note filtering by tag ID.
-- **F17**: User unique tags retrieval.
-
-#### Tier 2: Boundary & Corner Cases (`tier2-boundary-corner.test.ts`)
-*Threshold requirement: ≥ 12 test cases covering edge conditions, security & adversarial inputs.*
-*Delivered: 16 test cases.*
-- **B1**: Duplicate email registration rejection.
-- **B2**: Invalid email format rejection (suite of malformed emails).
-- **B3**: Short (< 6/8 chars) and empty password rejection.
-- **B4**: Login with invalid password rejection.
-- **B5**: Login with non-existent user email handling.
-- **B6**: Note creation with empty/whitespace-only title rejection.
-- **B7**: Title max length boundary (200 chars allowed, 201 chars rejected).
-- **B8**: Large note markdown content payload handling (~50KB).
-- **B9**: Aggressive XSS attack vectors sanitization.
-- **B10**: SQL injection payloads in search query safely parameterized.
-- **B11**: IDOR Read attempt blocked: User B cannot read User A's private note.
-- **B12**: IDOR Update attempt blocked: User B cannot update User A's note.
-- **B13**: IDOR Delete attempt blocked: User B cannot delete User A's note.
-- **B14**: Cascading delete integrity: Deleting a note cascades `note_tags` without deleting tags.
-- **B15**: Cascading delete user: Deleting user deletes all notes, tags, and sessions.
-- **B16**: Unicode & special character preservation (Emojis, CJK, Arabic, Cyrillic).
-
-#### Tier 3: Cross-Feature & Isolation (`tier3-cross-feature.test.ts`)
-*Threshold requirement: ≥ 8 test cases covering compound features and multi-tenant isolation.*
-*Delivered: 8 test cases.*
-- **CF1**: Full multi-tenant isolation with identical note titles and tag names across users.
-- **CF2**: Combined multi-facet filtering (Tag filter + Keyword Search Query + Pinned status).
-- **CF3**: Deterministic sort ordering (Pinned notes first, then timestamp descending).
-- **CF4**: Tag lifecycle & multi-note association integrity.
-- **CF5**: Sliding session expiration renewal.
-- **CF6**: Expired session token rejection and automatic DB cleanup.
-- **CF7**: Cross-tenant tag ID query barrier (no cross-user note disclosure).
-- **CF8**: Multi-device concurrent sessions & granular session invalidation.
-
-#### Tier 4: Real-World Workflows (`tier4-real-world.test.ts`)
-*Threshold requirement: ≥ 4 end-to-end multi-step application scenarios.*
-*Delivered: 4 comprehensive scenarios.*
-- **RW1 (Onboarding & First Note Lifecycle)**: User signup -> login -> create first note with `#onboarding` -> edit with markdown checklist -> pin note -> search note -> logout -> session invalidation verification.
-- **RW2 (Knowledge Worker Productivity Workflow)**: User logs in -> creates Standup note, Architecture RFC (pinned), and Scratchpad note -> updates RFC with markdown code/table -> lists notes (pinned first) -> filters by `#work` tag -> searches for "PostgreSQL" -> deletes scratchpad -> verifies remaining notes.
-- **RW3 (Multi-Tenant Security & Isolation Audit)**: Alice & Bob register -> both create notes with identical titles and tags -> Alice searches "Confidential" -> Bob searches "Confidential" -> Alice attempts IDOR read/update/delete on Bob's note -> all blocked -> Bob deletes his note -> Alice's data remains 100% intact.
-- **RW4 (Tag Restructuring & Multi-Facet Query Workflow)**: User creates 5 notes across domains -> reorganizes tags -> executes multi-facet searches -> filters pinned notes -> deletes selected notes -> verifies junction cascade integrity and remaining notes.
-
----
-
-## Total Test Metrics
-- **Unit Tests**: 35 test cases
-- **Integration Tests**: 20 test cases
-- **Tier 1 Feature Coverage Tests**: 17 test cases
-- **Tier 2 Boundary & Corner Cases Tests**: 16 test cases
-- **Tier 3 Cross-Feature & Isolation Tests**: 8 test cases
-- **Tier 4 Real-World Workflows**: 4 test cases
-- **Total Test Cases**: 100 test cases across 10 test files.
-- **Target Coverage**: 100% feature coverage of all functional, security, and multi-tenant isolation requirements from `PROJECT.md` and `ORIGINAL_REQUEST.md`.
+Result: **105 tests passing, 0 errors**.

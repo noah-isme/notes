@@ -1,3 +1,9 @@
+<script module lang="ts">
+  function getPropValue<T>(getter: () => T): T {
+    return getter();
+  }
+</script>
+
 <script lang="ts">
   import { IconSearch, IconClose } from './icons';
 
@@ -17,7 +23,7 @@
     onClear,
   }: SearchBarProps = $props();
 
-  let inputValue = $state(value);
+  let inputValue = $state(getPropValue(() => value));
   let isInitialMount = true;
 
   // Sync external value changes to local state

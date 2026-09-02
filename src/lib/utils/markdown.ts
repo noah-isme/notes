@@ -169,11 +169,20 @@ export function renderMarkdown(markdown: string): string {
 
   // Phase 1: Shield Fenced Code Blocks (using private Unicode characters \uE000CBi\uE000)
   let workingText = normalized.replace(
-    /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g,
+    /```([^\n`]*)\n([\s\S]*?)```/g,
     (_, lang, code) => {
       const idx = codeBlocks.length;
-      const langAttr = lang ? ` class="language-${escapeHtml(lang.trim())}"` : '';
-      codeBlocks.push(`<pre><code${langAttr}>${escapeHtml(code)}</code></pre>`);
+      const cleanLang = (lang || '').trim();
+      const isMermaid = cleanLang.toLowerCase() === 'mermaid';
+
+      if (isMermaid) {
+        codeBlocks.push(
+          `<div class="mermaid-block" data-mermaid-code="${escapeHtml(code)}"><pre><code class="language-mermaid">${escapeHtml(code)}</code></pre></div>`
+        );
+      } else {
+        const langAttr = cleanLang ? ` class="language-${escapeHtml(cleanLang)}"` : '';
+        codeBlocks.push(`<pre><code${langAttr}>${escapeHtml(code)}</code></pre>`);
+      }
       return `\uE000CB${idx}\uE000`;
     }
   );

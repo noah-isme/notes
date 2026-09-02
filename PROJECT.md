@@ -1,180 +1,79 @@
-# Project: SvelteKit 2 + Svelte 5 Multi-User Notes Application
+# Project: Mermaid.js Interactive Diagram Rendering in SvelteKit 2 Notes App
 
 ## Architecture
-- **Framework & Frontend**: SvelteKit 2 with Svelte 5 Runes (`$state`, `$derived`, `$props`, `$effect`), responsive CSS styling (modern, clean, desktop 3-pane / mobile adaptive layout), markdown renderer and live preview.
-- **Backend & Routing**: SvelteKit Server Routing (`+page.server.ts`, `+server.ts`), request lifecycle interception in `src/hooks.server.ts` for session authentication and user context injection (`event.locals.user`).
-- **Database & ORM**: PostgreSQL (tested locally via `localhost:5433` / postgres container and configurable via `DATABASE_URL`), Drizzle ORM (`drizzle-orm/postgres-js`), Drizzle Kit for schema migrations (`drizzle.config.ts`).
-- **Connection Pooling**: Serverless-compatible connection pooling with `postgres` (postgres.js) using `prepare: false`, `max: 10`, idle connection termination suitable for Vercel Serverless Functions.
-- **Authentication & Security**: Strong cryptographic password hashing using Node `crypto.scrypt` with per-user cryptographic salt, database-backed `sessions` table, cryptographically secure 32-byte session tokens stored in `httpOnly`, `sameSite: 'lax'`, `secure` cookies with 30-day sliding expiry.
-- **Tenant Isolation**: Strict compound query predicates across all database operations (`and(eq(notes.id, noteId), eq(notes.userId, locals.user.id))`) ensuring zero cross-tenant data leakage or IDOR vulnerability.
-- **Deployment**: Configured with `@sveltejs/adapter-vercel` (`runtime: 'nodejs20.x'`), complete `.env.example`.
-
-## Code Layout
-```
-/home/noah/project/notes/
-├── drizzle/                    # Generated SQL migration files
-├── src/
-│   ├── app.d.ts                # SvelteKit App namespace & locals typing
-│   ├── app.html                # Base HTML template
-│   ├── hooks.server.ts         # Authentication hook & session resolution
-│   ├── lib/
-│   │   ├── components/         # Svelte 5 UI components
-│   │   │   ├── AuthForm.svelte
-│   │   │   ├── NoteEditor.svelte
-│   │   │   ├── NoteList.svelte
-│   │   │   ├── NoteCard.svelte
-│   │   │   ├── TagFilter.svelte
-│   │   │   ├── SearchBar.svelte
-│   │   │   └── Toast.svelte
-│   │   ├── server/             # Server-only modules
-│   │   │   ├── db/
-│   │   │   │   ├── index.ts    # Drizzle client with serverless pool
-│   │   │   │   └── schema.ts   # Database tables, relations, indexes
-│   │   │   ├── auth.ts         # Auth helpers (hashing, session create/validate/delete)
-│   │   │   └── notes.ts        # Note & Tag CRUD service with user isolation
-│   │   └── utils/
-│   │       ├── markdown.ts     # Markdown parser & XSS sanitizer
-│   │       └── validation.ts   # Input validation schemas/helpers
-│   └── routes/
-│       ├── +layout.svelte      # Root layout
-│       ├── +layout.server.ts   # Root layout server load (user state)
-│       ├── +page.svelte        # Home / Landing / Notes dashboard redirect
-│       ├── (auth)/
-│       │   ├── login/
-│       │   │   ├── +page.svelte
-│       │   │   └── +page.server.ts
-│       │   ├── register/
-│       │   │   ├── +page.svelte
-│       │   │   └── +page.server.ts
-│       │   └── logout/
-│       │       └── +page.server.ts
-│       ├── (app)/
-│       │   ├── +layout.svelte  # Authenticated app shell (nav, sidebar)
-│       │   ├── +layout.server.ts # Auth guard
-│       │   ├── +page.svelte    # Notes dashboard (list, filter, editor)
-│       │   └── +page.server.ts # Load notes, tags; note actions
-│       └── api/
-│           ├── notes/
-│           │   ├── +server.ts  # REST endpoints for notes CRUD
-│           │   └── [id]/
-│           │       └── +server.ts
-│           └── tags/
-│               └── +server.ts
-├── tests/                      # Automated test suite
-│   ├── unit/                   # Unit tests (auth hashing, markdown, validation)
-│   ├── integration/            # DB integration tests (schema, auth, isolation)
-│   └── e2e/                    # Opaque-box E2E test scenarios (Tiers 1-4)
-├── drizzle.config.ts           # Drizzle Kit configuration
-├── svelte.config.js            # SvelteKit config with @sveltejs/adapter-vercel
-├── vite.config.ts              # Vite + Vitest config
-├── tsconfig.json               # TypeScript configuration
-├── package.json                # Dependencies & scripts
-└── .env.example                # Documented environment variables
-```
+- **Framework**: SvelteKit 2.16.1 / Svelte 5.19.7 (Runes: `$state`, `$derived`, `$props`, `$effect`), TypeScript 5.7.3, Vite, Tailwind CSS / Scoped CSS, `@sveltejs/adapter-vercel`.
+- **Parsing Strategy**: Isomorphic `src/lib/utils/markdown.ts` extracts ````mermaid` blocks and formats them into structured HTML containers with data attributes (`data-mermaid-code="..."`) and `<pre><code class="language-mermaid">` fallbacks.
+- **Engine Singleton**: Client-only dynamic module `src/lib/utils/mermaid.ts` loads `mermaid@^11.17.2` asynchronously when `browser` is true. Configured with `securityLevel: 'strict'`, `suppressErrorRendering: true`, and custom Slate design tokens.
+- **Interactive Component**: `src/lib/components/MermaidDiagram.svelte` mounts on diagram containers, performs debounced SVG rendering, renders toolbar actions (Copy Source, Copy SVG, Fullscreen modal trigger, Code toggle), provides an accessible WAI-ARIA zoom/pan modal, and handles syntax errors inline with fallback raw code.
+- **Integration Points**: `src/lib/components/NoteEditor.svelte` (edit, split, preview modes) and note detail views (`MarkdownViewer.svelte`).
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | DB Schema & Tables | PostgreSQL schema for users, sessions, notes, tags, note_tags with relations | M1 | ORIGINAL_REQUEST §R3 |
-| 2 | Serverless Connection Pool | Postgres connection pooling with `prepare: false`, idle timeout for Vercel | M1 | ORIGINAL_REQUEST §R3 |
-| 3 | Migration Engine | Drizzle Kit migration runner and clean schema setup scripts | M1 | ORIGINAL_REQUEST §R3, Acceptance §35 |
-| 4 | User Registration | Create user account with unique email and cryptographically hashed password | M2 | ORIGINAL_REQUEST §R1 |
-| 5 | User Login | Authenticate credentials and issue cryptographically secure session cookie | M2 | ORIGINAL_REQUEST §R1 |
-| 6 | Session Management | Server-side session verification, 30-day sliding expiration, cookie security | M2 | ORIGINAL_REQUEST §R1 |
-| 7 | User Logout | Invalidate active session in DB and clear session cookie | M2 | ORIGINAL_REQUEST §R1 |
-| 8 | Server Route Guards | SvelteKit `hooks.server.ts` enforcing authentication on protected routes | M2 | ORIGINAL_REQUEST §R1, Acceptance §37 |
-| 9 | Strict User Isolation | Compound SQL query predicates preventing cross-tenant data access | M2 | ORIGINAL_REQUEST §R1 |
-| 10 | Note Create | Create note with title, content, tags, pinned status assigned to authenticated user | M3 | ORIGINAL_REQUEST §R2 |
-| 11 | Note Read & List | Retrieve user's notes with timestamps and associated tags | M3 | ORIGINAL_REQUEST §R2 |
-| 12 | Note Update | Edit note title, content, tags, pinned status with updated timestamp | M3 | ORIGINAL_REQUEST §R2 |
-| 13 | Note Delete | Remove note and cascade delete note_tags relationships | M3 | ORIGINAL_REQUEST §R2 |
-| 14 | Note Pinning | Toggle note pinned status with pinned notes ordered first | M3 | ORIGINAL_REQUEST §R2 |
-| 15 | Tags Management | Create tags, assign multiple tags to notes, filter notes by tag | M3 | ORIGINAL_REQUEST §R2 |
-| 16 | Multi-Facet Search | Search notes by title, content, and combined tag filters | M3 | ORIGINAL_REQUEST §R2 |
-| 17 | Server-side Validation | Validate inputs (email format, password length, title length, content) | M3 | ORIGINAL_REQUEST §R3 |
-| 18 | Markdown Parsing & XSS Sanitization | Render markdown formatted notes with safe HTML output | M4 | ORIGINAL_REQUEST §R2 |
-| 19 | Svelte 5 Reactive UI | Modern UI using Svelte 5 Runes (`$state`, `$derived`, `$props`, `$effect`) | M4 | ORIGINAL_REQUEST §R2 |
-| 20 | Responsive Desktop/Mobile Layout | 3-pane layout on desktop, responsive drawer/views on mobile viewports | M4 | ORIGINAL_REQUEST §R2, Acceptance §38 |
-| 21 | Vercel Adapter Setup | `@sveltejs/adapter-vercel` configured with Node.js 20.x runtime | M5 | ORIGINAL_REQUEST §R4 |
-| 22 | Environment Config | Complete `.env.example` documenting all configuration keys | M5 | ORIGINAL_REQUEST §R4 |
-| 23 | Build & Typecheck Zero-Error | Zero errors on `pnpm build` and TypeScript check (`svelte-check`) | M5 | ORIGINAL_REQUEST §R4, Acceptance §36 |
-| 24 | E2E Tier 1 Feature Coverage | Automated tests verifying all individual features in isolation | M6 / E2E Track | ORIGINAL_REQUEST Acceptance §34 |
-| 25 | E2E Tier 2 Boundary & Corner Cases | Automated tests for edge cases, invalid inputs, duplicate data, XSS | M6 / E2E Track | ORIGINAL_REQUEST Acceptance §34 |
-| 26 | E2E Tier 3 Cross-Feature & Isolation | Automated tests for IDOR prevention, combined search+tag+pin, auth transitions | M6 / E2E Track | ORIGINAL_REQUEST Acceptance §34, §37 |
-| 27 | E2E Tier 4 Real-World Workflows | Automated end-to-end multi-step user scenarios and stress tests | M6 / E2E Track | ORIGINAL_REQUEST Acceptance §34 |
+| 1 | Fenced Code Block Detection | Parse ````mermaid` fenced code blocks in markdown without breaking standard code blocks or existing HTML sanitization | M1 | ORIGINAL_REQUEST R1 |
+| 2 | Client-Side Async Loading (SSR Safe) | Dynamically import and initialize Mermaid.js on client side only, preventing SSR / Node crashes on Vercel adapter | M1 | ORIGINAL_REQUEST R1 |
+| 3 | Core Diagram Types Support | Render flowcharts, sequence, class, state, ER diagrams, Gantt charts, mindmaps, git graphs to responsive SVG | M1 | ORIGINAL_REQUEST R1 |
+| 4 | Clean Slate Design Synchronization | Apply neutral slate theme variables (`#0f172a`, `#f8fafc`, `#e2e8f0`, `#2563eb`) to Mermaid diagrams | M1 | ORIGINAL_REQUEST R3 |
+| 5 | Runes Warnings Remediation | Resolve the 6 `state_referenced_locally` warnings in `NoteEditor.svelte` and `SearchBar.svelte` for 0 warnings `pnpm check` | M1 | ORIGINAL_REQUEST R4 |
+| 6 | Action Buttons (Copy Source & Copy SVG) | Copy raw mermaid source text or exported SVG XML to clipboard with visual feedback | M2 | ORIGINAL_REQUEST R3 |
+| 7 | Fullscreen / Zoom Preview Modal | WAI-ARIA accessible modal dialog with interactive pan/zoom (0.25x-4.0x), reset, and keyboard navigation | M2 | ORIGINAL_REQUEST R3 |
+| 8 | Resilient Error Boundary UI | Gracefully catch syntax errors without throwing; display inline error banner + toggleable fallback raw code | M2 | ORIGINAL_REQUEST R2 |
+| 9 | Clean SVG Icon Set | Accessible SVG icons for copy, maximize, zoom in, zoom out, reset, code toggle, and download | M2 | ORIGINAL_REQUEST R3 |
+| 10 | Live Preview Integration & Debouncing | Real-time preview in `NoteEditor.svelte` (preview/split views) and note detail views with 200ms debounce | M3 | ORIGINAL_REQUEST R2 |
+| 11 | Comprehensive Vitest & Build Verification | Unit & integration tests covering all features, Tiers 1-4 passing 100%, 0 warnings on `pnpm check`, clean build | M4 | ORIGINAL_REQUEST R4 |
+| 12 | Adversarial Hardening (Tier 5) | Stress test edge cases (malformed syntax, extreme sizes, concurrent re-renders, XSS vectors) | M4 | ORIGINAL_REQUEST R4 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| E2E | E2E Testing Suite Track | Design test harness, runner, and 4-tier test suites (Tier 1-4); publish `TEST_READY.md` | none | DONE |
-| 1 | DB Schema & Infrastructure | SvelteKit project initialization, Drizzle ORM schema, serverless pooling, migrations | none | DONE |
-| 2 | Auth & User Isolation | Registration, login, logout, session lifecycle, hooks, compound query isolation | M1 | DONE |
-| 3 | Notes Service & API | Notes CRUD, tags, pinning, search/filter, validation, API endpoints | M1, M2 | DONE |
-| 4 | Svelte 5 UI & Markdown Editor | Svelte 5 runes components, responsive layout, markdown editor & preview | M2, M3 | DONE |
-| 5 | Vercel Adapter & Build Config | `@sveltejs/adapter-vercel`, `.env.example`, typecheck & build validation | M1, M2, M3, M4 | IN_PROGRESS |
-| 6 | Final E2E Pass & Coverage Hardening | Phase 1: 100% pass on E2E tests (Tiers 1-4). Phase 2: Adversarial coverage hardening (Tier 5) | E2E, M5 | PLANNED |
+| T-E2E | E2E Testing Track | Design & implement comprehensive opaque-box E2E test suite (Tiers 1-4) | none | DONE (105 tests) |
+| M1 | Engine & Markdown Integration | Install `mermaid`, create `src/lib/utils/mermaid.ts`, update `markdown.ts`, fix runes warnings | none | DONE |
+| M2 | UI Controls, Icons & Error Boundary | Create icon set, `src/lib/components/MermaidDiagram.svelte`, zoom modal, copy handlers, error boundary | M1 | DONE |
+| M3 | NoteEditor & Live Preview Integration | Wire `MermaidDiagram` into `NoteEditor.svelte` and note views with 200ms debouncing | M2 | DONE |
+| M4 | Final Milestone (E2E Pass & Hardening) | Pass 100% E2E tests, Tier 5 adversarial testing, verify 0 errors/warnings `pnpm check`, clean build | T-E2E, M3 | DONE (358 tests) |
 
 ## Interface Contracts
-
-### 1. Database & Auth Service Contract
+### `src/lib/utils/mermaid.ts`
 ```typescript
-export interface User {
-  id: string;
-  email: string;
-  passwordHash: string;
-  createdAt: Date;
-  updatedAt: Date;
+export interface MermaidRenderResult {
+  svg: string;
+  bindFunctions?: (element: Element) => void;
 }
 
-export interface Session {
-  id: string;
-  userId: string;
-  expiresAt: Date;
-  createdAt: Date;
+export interface MermaidRenderError {
+  message: string;
+  str?: string;
+  hash?: any;
 }
 
-export interface Note {
-  id: string;
-  userId: string;
-  title: string;
-  content: string;
-  isPinned: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+export function isMermaidSupported(): boolean;
+export function initializeMermaid(theme?: 'slate' | 'default'): Promise<any>;
+export function renderMermaidSvg(id: string, code: string): Promise<{ svg: string; bindFunctions?: (element: Element) => void } | { error: string }>;
+export function parseMermaidSyntax(code: string): Promise<{ valid: boolean; error?: string }>;
+```
 
-export interface Tag {
-  id: string;
-  userId: string;
-  name: string;
-  createdAt: Date;
-}
-
-export interface NoteWithTags extends Note {
-  tags: Tag[];
+### `src/lib/components/MermaidDiagram.svelte`
+```typescript
+interface Props {
+  code: string;
+  id?: string;
+  title?: string;
+  showControls?: boolean;
 }
 ```
 
-### 2. SvelteKit Server Locals & Request Hook Contract
-```typescript
-// src/app.d.ts
-declare global {
-  namespace App {
-    interface Locals {
-      user: { id: string; email: string } | null;
-      session: { id: string; userId: string; expiresAt: Date } | null;
-    }
-    // interface PageData {}
-  }
-}
-```
-
-### 3. Notes CRUD Service Contract (`src/lib/server/notes.ts`)
-```typescript
-export function getNotes(userId: string, options?: { search?: string; tagId?: string; isPinned?: boolean }): Promise<NoteWithTags[]>;
-export function getNoteById(userId: string, noteId: string): Promise<NoteWithTags | null>;
-export function createNote(userId: string, data: { title: string; content?: string; isPinned?: boolean; tagNames?: string[] }): Promise<NoteWithTags>;
-export function updateNote(userId: string, noteId: string, data: { title?: string; content?: string; isPinned?: boolean; tagNames?: string[] }): Promise<NoteWithTags | null>;
-export function deleteNote(userId: string, noteId: string): Promise<boolean>;
-export function getUserTags(userId: string): Promise<Tag[]>;
-```
+## Code Layout
+- `src/lib/utils/mermaid.ts`: Mermaid client singleton, configuration, and rendering service.
+- `src/lib/utils/markdown.ts`: Isomorphic markdown parser with mermaid block detection.
+- `src/lib/actions/mermaid.ts`: Svelte 5 action for mounting and hydrating MermaidDiagram instances.
+- `src/lib/components/MermaidDiagram.svelte`: Interactive diagram component with toolbar, error boundary, and zoom modal.
+- `src/lib/components/MarkdownViewer.svelte`: Reusable markdown preview component.
+- `src/lib/components/icons/`:
+  - `IconCopy.svelte`, `IconMaximize.svelte`, `IconZoomIn.svelte`, `IconZoomOut.svelte`, `IconRotateCcw.svelte`, `IconCode.svelte`, `IconDownload.svelte`, `IconCheck.svelte`, `IconAlertCircle.svelte`.
+- `src/lib/components/NoteEditor.svelte`: Note editor with debounced live preview and diagram integration.
+- `tests/unit/mermaid.test.ts`: Unit tests for engine service, parsing, and error handling.
+- `tests/unit/mermaid-components.test.ts`: Component rendering, action buttons, and modal dialog tests.
+- `tests/unit/mermaid-editor.test.ts`: NoteEditor live preview, debouncing, and view mode tests.
+- `tests/unit/mermaid-e2e.test.ts`: Comprehensive E2E test suite covering Tiers 1-4 (105 tests).
+- `tests/unit/mermaid-adversarial.test.ts`: Tier 5 engine adversarial stress and resilience tests (36 tests).
+- `tests/unit/mermaid-adversarial-ui.test.ts`: Tier 5 UI interaction and boundary stress tests (30 tests).
