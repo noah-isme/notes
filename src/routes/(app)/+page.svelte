@@ -287,6 +287,16 @@
     });
   }
 
+  function handleEditNote(note: NoteCardData) {
+    confirmIfDirty(() => {
+      selectedNoteId = note.id;
+      activeNote = note;
+      isCreatingNew = false;
+      editorViewMode = 'edit';
+      mobileView = 'editor';
+    });
+  }
+
   function handleCreateNew() {
     if (isCreatingNew && !isEditorDirty) {
       mobileView = 'editor';
@@ -595,7 +605,7 @@
           selectedTagId={data.filters?.tagId}
           selectedTagName={selectedTag?.name}
           onSelectNote={handleSelectNote}
-          onEditNote={handleSelectNote}
+          onEditNote={handleEditNote}
           onDeleteNote={handleDeleteNote}
           onTogglePin={handleTogglePin}
           onTagClick={handleTagClickFromCard}

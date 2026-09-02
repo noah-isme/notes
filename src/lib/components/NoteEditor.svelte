@@ -607,12 +607,13 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
+    width: 100%;
   }
 
   .title-input-group {
     position: relative;
-    flex: 1;
-    min-width: 240px;
+    flex: 1 1 200px;
+    min-width: 180px;
     display: flex;
     align-items: center;
   }
@@ -653,8 +654,9 @@
 
   .top-controls {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   .unsaved-badge {
@@ -762,12 +764,14 @@
 
   .view-mode-tabs {
     display: inline-flex;
+    flex-shrink: 0;
     background: #f1f5f9;
     padding: 0.1875rem;
     border-radius: 6px;
     border: 1px solid #cbd5e1;
     gap: 2px;
     align-items: center;
+    user-select: none;
   }
 
   .mode-btn {
@@ -779,23 +783,24 @@
     padding: 0.25rem 0.625rem;
     font-size: 0.8125rem;
     font-weight: 500;
-    color: #64748b;
+    color: #475569;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     user-select: none;
+    white-space: nowrap;
   }
 
   .mode-btn:hover {
-    color: #1e293b;
-    background: rgba(255, 255, 255, 0.5);
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.7);
   }
 
   .mode-btn.active {
     background: #ffffff;
     color: #0f172a;
     font-weight: 600;
-    border-color: rgba(15, 23, 42, 0.08);
+    border-color: #cbd5e1;
     box-shadow:
       0 1px 3px rgba(15, 23, 42, 0.1),
       0 1px 2px rgba(15, 23, 42, 0.06);
@@ -905,11 +910,13 @@
 
   .editor-workspace {
     flex: 1;
-    min-height: 380px;
+    min-height: 420px;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     overflow: hidden;
     display: flex;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .editor-workspace.split {
@@ -919,10 +926,12 @@
 
   .editor-workspace.edit {
     display: flex;
+    flex-direction: column;
   }
 
   .editor-workspace.preview {
     display: flex;
+    flex-direction: column;
   }
 
   .workspace-pane {
@@ -930,11 +939,17 @@
     overflow-y: auto;
     box-sizing: border-box;
     min-width: 0;
+    flex: 1;
+    width: 100%;
   }
 
   .editor-pane {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
   }
 
   .editor-workspace.split .editor-pane {
@@ -944,7 +959,8 @@
   .markdown-textarea {
     width: 100%;
     height: 100%;
-    min-height: 380px;
+    min-height: 420px;
+    flex: 1;
     padding: 1rem;
     border: none;
     outline: none;
@@ -964,6 +980,11 @@
   .preview-pane {
     padding: 1rem 1.25rem;
     background: #fdfdfd;
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    height: 100%;
   }
 
   .empty-preview {
