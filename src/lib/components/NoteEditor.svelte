@@ -47,6 +47,7 @@
     }) => void;
     onCancel?: () => void;
     onDelete?: (noteId: string) => void;
+    onTogglePin?: (noteId: string, isPinned: boolean) => void;
     onDirtyChange?: (isDirty: boolean) => void;
     onToggleFocusMode?: () => void;
   }
@@ -62,6 +63,7 @@
     onSave,
     onCancel,
     onDelete,
+    onTogglePin,
     onDirtyChange,
     onToggleFocusMode,
   }: NoteEditorProps = $props();
@@ -229,6 +231,16 @@
     titleTouched = false;
   }
 
+  function handlePinToggle(e?: Event) {
+    const nextPinned = e ? (e.target as HTMLInputElement).checked : !isPinned;
+    isPinned = nextPinned;
+
+    if (note?.id && !isNew) {
+      initialIsPinned = nextPinned;
+      onTogglePin?.(note.id, nextPinned);
+    }
+  }
+
   let renderedPreview = $derived(renderMarkdown(debouncedContent));
   let titleCharCount = $derived(title.length);
   let isTitleValid = $derived(title.trim().length > 0 && title.trim().length <= 200);
@@ -365,8 +377,9 @@
           <input
             type="checkbox"
             checked={isPinned}
-            onchange={(e) => (isPinned = (e.target as HTMLInputElement).checked)}
+            onchange={handlePinToggle}
             class="sr-only"
+            aria-label={isPinned ? 'Unpin note' : 'Pin note'}
           />
           <IconPin size={13} filled={isPinned} />
           <span>{isPinned ? 'Pinned' : 'Pin'}</span>

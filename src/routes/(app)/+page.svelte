@@ -451,6 +451,16 @@
   }
 
   async function handleTogglePin(noteId: string, isPinned: boolean) {
+    const previousNotes = [...localNotes];
+
+    // Optimistically update local notes list for instant UI feedback
+    localNotes = localNotes.map((n) =>
+      n.id === noteId ? { ...n, isPinned } : n
+    );
+
+    // Instant toast notification
+    toast.success(isPinned ? '📌 Note pinned to top' : '📌 Note unpinned');
+
     const formData = new FormData();
     formData.append('id', noteId);
     formData.append('isPinned', isPinned ? 'true' : 'false');
@@ -461,13 +471,12 @@
         body: formData,
       });
 
-      if (response.ok) {
-        toast.success(isPinned ? 'Note pinned' : 'Note unpinned');
-        await goto($page.url.toString(), { invalidateAll: true });
-      } else {
-        toast.error('Failed to update pin status');
+      if (!response.ok) {
+        localNotes = previousNotes;
+        toast.error('Failed to update pin status on server');
       }
     } catch {
+      localNotes = previousNotes;
       toast.error('An error occurred while updating pin status');
     }
   }
@@ -623,6 +632,7 @@
           formError={form?.error}
           onCancel={handleCancelEditor}
           onDelete={handleDeleteNote}
+          onTogglePin={handleTogglePin}
         />
       {:else}
         <div class="no-selection-workspace">
