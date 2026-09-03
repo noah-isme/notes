@@ -24,6 +24,7 @@
   "dependencies": {
     "@sveltejs/adapter-vercel": "^5.5.0",
     "clsx": "^2.1.1",
+    "docx": "^9.7.1",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.4",
     "mermaid": "^11.17.2",
