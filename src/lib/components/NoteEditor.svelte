@@ -2,12 +2,25 @@
   function getPropValue<T>(getter: () => T): T {
     return getter();
   }
+
+  function onOutsideClick(node: HTMLElement, callback: () => void) {
+    const handler = (event: MouseEvent) => {
+      if (!node.contains(event.target as Node)) callback();
+    };
+    document.addEventListener('mousedown', handler);
+    return {
+      destroy() {
+        document.removeEventListener('mousedown', handler);
+      },
+    };
+  }
 </script>
 
 <script lang="ts">
   import { renderMarkdown } from '$lib/utils/markdown';
   import { mermaidRenderer } from '$lib/actions/mermaid';
   import ShareDialog from './ShareDialog.svelte';
+  import { toast } from '$lib/stores/toast.svelte';
   import {
     IconPin,
     IconEdit,
@@ -20,6 +33,7 @@
     IconShare,
     IconSpinner,
     IconChevronUp,
+    IconDownload,
   } from './icons';
 
   export interface NoteEditorData {
@@ -345,6 +359,76 @@
       onDelete(note.id);
     }
   }
+
+  type ExportFormat = 'docx' | 'doc' | 'html';
+
+  const exportFormats: Array<{ format: ExportFormat; label: string; hint: string }> = [
+    { format: 'docx', label: 'Word Document', hint: '.docx' },
+    { format: 'doc', label: 'Word 97-2003', hint: '.doc' },
+    { format: 'html', label: 'Google Docs', hint: '.html' },
+  ];
+
+  let isExportMenuOpen = $state(false);
+  let isExporting = $state<ExportFormat | null>(null);
+
+  function closeExportMenu() {
+    isExportMenuOpen = false;
+  }
+
+  $effect(() => {
+    if (!isExportMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeExportMenu();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  });
+
+  function extractDownloadFilename(disposition: string, fallback: string): string {
+    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match) {
+      try {
+        return decodeURIComponent(utf8Match[1]);
+      } catch {
+        // fall through to ASCII filename
+      }
+    }
+    const asciiMatch = disposition.match(/filename="([^"]+)"/i);
+    return asciiMatch ? asciiMatch[1] : fallback;
+  }
+
+  async function handleExport(format: ExportFormat) {
+    if (!note?.id || isNew || isExporting) return;
+    closeExportMenu();
+    isExporting = format;
+
+    try {
+      const response = await fetch(`/api/notes/${note.id}/export?format=${format}`);
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(result?.error || `Export failed (${response.status})`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = extractDownloadFilename(
+        response.headers.get('Content-Disposition') ?? '',
+        `note.${format}`
+      );
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      toast.success(`Exported "${title.trim() || 'Note'}" as .${format}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Export failed');
+    } finally {
+      isExporting = null;
+    }
+  }
 </script>
 
 <div class="note-editor-wrapper">
@@ -420,6 +504,47 @@
             <IconShare size={13} />
             <span>{isPublic ? 'Shared' : 'Share'}</span>
           </button>
+        {/if}
+
+        {#if note?.id && !isNew}
+          <div class="export-menu-wrapper" use:onOutsideClick={closeExportMenu}>
+            <button
+              type="button"
+              class="export-toggle-btn"
+              onclick={() => (isExportMenuOpen = !isExportMenuOpen)}
+              aria-haspopup="menu"
+              aria-expanded={isExportMenuOpen}
+              title="Export note as document"
+              aria-label="Export note as document"
+              data-testid="export-note-btn"
+              disabled={isExporting !== null}
+            >
+              {#if isExporting}
+                <IconSpinner size={13} />
+                <span>Exporting...</span>
+              {:else}
+                <IconDownload size={13} />
+                <span>Export</span>
+              {/if}
+            </button>
+
+            {#if isExportMenuOpen}
+              <div class="export-menu" role="menu" aria-label="Export formats" data-testid="export-menu">
+                {#each exportFormats as item (item.format)}
+                  <button
+                    type="button"
+                    class="export-menu-item"
+                    role="menuitem"
+                    onclick={() => handleExport(item.format)}
+                    data-testid={`export-option-${item.format}`}
+                  >
+                    <span class="export-item-label">{item.label}</span>
+                    <span class="export-item-hint">{item.hint}</span>
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
         {/if}
 
         <!-- View Mode Switcher -->
@@ -814,6 +939,97 @@
     background: #d1fae5;
     border-color: #34d399;
     color: #065f46;
+  }
+
+  .export-menu-wrapper {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .export-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .export-toggle-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #94a3b8;
+  }
+
+  .export-toggle-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  .export-toggle-btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+  }
+
+  .export-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 50;
+    min-width: 200px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow:
+      0 4px 6px -1px rgba(15, 23, 42, 0.1),
+      0 2px 4px -2px rgba(15, 23, 42, 0.06);
+    padding: 0.25rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .export-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.4375rem 0.625rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #334155;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s ease;
+  }
+
+  .export-menu-item:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .export-menu-item:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: -2px;
+  }
+
+  .export-item-hint {
+    font-size: 0.6875rem;
+    color: #94a3b8;
+    font-weight: 600;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 0.0625rem 0.375rem;
+    white-space: nowrap;
   }
 
   .sr-only {
