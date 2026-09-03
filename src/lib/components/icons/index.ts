@@ -24,3 +24,4 @@ export { default as IconDownload } from './IconDownload.svelte';
 export { default as IconShare } from './IconShare.svelte';
 export { default as IconLink } from './IconLink.svelte';
 export { default as IconSpinner } from './IconSpinner.svelte';
+export { default as IconChevronUp } from './IconChevronUp.svelte';

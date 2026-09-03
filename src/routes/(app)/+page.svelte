@@ -805,6 +805,9 @@
     height: 100%;
     box-sizing: border-box;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
   }
 
   .sidebar-block {
@@ -891,12 +894,16 @@
   .master-list-scrollable {
     flex: 1;
     overflow-y: auto;
-    padding-right: 0.125rem;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 0.25rem;
   }
 
   .pane-detail-workspace {
     height: 100%;
     box-sizing: border-box;
+    overscroll-behavior: contain;
   }
 
   .no-selection-workspace {

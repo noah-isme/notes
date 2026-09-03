@@ -161,7 +161,14 @@
   .section-header {
     display: flex;
     align-items: center;
-    padding: 0 0.25rem;
+    padding: 0.35rem 0.375rem;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    background: rgba(248, 250, 252, 0.92);
+    border-radius: 4px;
   }
 
   .section-title {

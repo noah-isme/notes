@@ -19,6 +19,7 @@
     IconMaximize,
     IconShare,
     IconSpinner,
+    IconChevronUp,
   } from './icons';
 
   export interface NoteEditorData {
@@ -79,6 +80,17 @@
   let tagList = $state<string[]>(getPropValue(() => (note?.tags ? note.tags.map((t) => t.name) : [])));
   let tagInput = $state('');
   let titleTouched = $state(false);
+  let previewPaneRef = $state<HTMLDivElement | null>(null);
+  let showScrollTopBtn = $state(false);
+
+  function handlePreviewScroll(e: Event) {
+    const target = e.target as HTMLElement;
+    showScrollTopBtn = target.scrollTop > 220;
+  }
+
+  function scrollToTop() {
+    previewPaneRef?.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   // Baseline snapshots for change detection
   let initialTitle = $state(getPropValue(() => note?.title ?? ''));
@@ -527,7 +539,13 @@
       {/if}
 
       {#if viewMode === 'preview' || viewMode === 'split'}
-        <div class="workspace-pane preview-pane" role="region" aria-label="Markdown Preview">
+        <div
+          bind:this={previewPaneRef}
+          class="workspace-pane preview-pane"
+          role="region"
+          aria-label="Markdown Preview"
+          onscroll={handlePreviewScroll}
+        >
           {#if renderedPreview}
             <div class="markdown-preview" use:mermaidRenderer={renderedPreview}>
               <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -537,6 +555,18 @@
             <div class="empty-preview">
               <em>Markdown preview will appear here as you type...</em>
             </div>
+          {/if}
+
+          {#if showScrollTopBtn}
+            <button
+              type="button"
+              class="btn-scroll-top"
+              onclick={scrollToTop}
+              title="Scroll to top"
+              aria-label="Scroll to top"
+            >
+              <IconChevronUp size={16} />
+            </button>
           {/if}
         </div>
       {/if}
@@ -972,6 +1002,9 @@
   .workspace-pane {
     height: 100%;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
     box-sizing: border-box;
     min-width: 0;
     flex: 1;
@@ -1007,12 +1040,14 @@
     -moz-tab-size: 2;
     white-space: pre-wrap;
     overflow-wrap: break-word;
+    overscroll-behavior: contain;
     color: #0f172a;
     background: #ffffff;
     box-sizing: border-box;
   }
 
   .preview-pane {
+    position: relative;
     padding: 1rem 1.25rem;
     background: #fdfdfd;
     flex: 1;
@@ -1020,6 +1055,40 @@
     min-width: 0;
     box-sizing: border-box;
     height: 100%;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .btn-scroll-top {
+    position: sticky;
+    bottom: 1rem;
+    float: right;
+    margin-top: -3rem;
+    margin-right: 0.25rem;
+    z-index: 20;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0.9;
+  }
+
+  .btn-scroll-top:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    transform: translateY(-2px);
+    opacity: 1;
   }
 
   .empty-preview {
