@@ -6,7 +6,7 @@
   import Toast from '$lib/components/Toast.svelte';
   import SearchBar from '$lib/components/SearchBar.svelte';
   import TagFilter from '$lib/components/TagFilter.svelte';
-  import NoteList from '$lib/components/NoteList.svelte';
+  import NoteList, { type BatchExportFormat } from '$lib/components/NoteList.svelte';
   import NoteEditor from '$lib/components/NoteEditor.svelte';
   import UnsavedChangesDialog from '$lib/components/UnsavedChangesDialog.svelte';
   import type { NoteCardData } from '$lib/components/NoteCard.svelte';
@@ -366,6 +366,107 @@
     }
   }
 
+  // Batch selection state (multi-select + batch export)
+  let selectionMode = $state(false);
+  let selectedNoteIds = $state<string[]>([]);
+  let isBatchExporting = $state(false);
+
+  let visibleNoteIds = $derived(localNotes.map((n) => n.id));
+
+  // Drop selected ids that are no longer visible (filters changed, notes deleted)
+  $effect(() => {
+    const visible = new Set(visibleNoteIds);
+    if (selectedNoteIds.some((id) => !visible.has(id))) {
+      selectedNoteIds = selectedNoteIds.filter((id) => visible.has(id));
+    }
+  });
+
+  function toggleSelectionMode() {
+    if (selectionMode) {
+      exitSelectionMode();
+    } else {
+      selectionMode = true;
+    }
+  }
+
+  function exitSelectionMode() {
+    selectionMode = false;
+    selectedNoteIds = [];
+  }
+
+  function toggleSelection(noteId: string) {
+    selectedNoteIds = selectedNoteIds.includes(noteId)
+      ? selectedNoteIds.filter((id) => id !== noteId)
+      : [...selectedNoteIds, noteId];
+  }
+
+  function selectAllNotes(noteIds: string[]) {
+    selectedNoteIds = [...noteIds];
+  }
+
+  function clearSelection() {
+    selectedNoteIds = [];
+  }
+
+  function extractDownloadFilename(disposition: string, fallback: string): string {
+    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match) {
+      try {
+        return decodeURIComponent(utf8Match[1]);
+      } catch {
+        // fall through to ASCII filename
+      }
+    }
+    const asciiMatch = disposition.match(/filename="([^"]+)"/i);
+    return asciiMatch ? asciiMatch[1] : fallback;
+  }
+
+  async function handleBatchExport(format: BatchExportFormat) {
+    if (isBatchExporting) return;
+    if (selectedNoteIds.length === 0) return;
+    if (selectedNoteIds.length > 200) {
+      toast.error('Select at most 200 notes');
+      return;
+    }
+
+    const count = selectedNoteIds.length;
+    isBatchExporting = true;
+
+    try {
+      const response = await fetch('/api/notes/export/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format, noteIds: selectedNoteIds }),
+      });
+
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as { error?: string } | null;
+        toast.error(result?.error || `Batch export failed (${response.status})`);
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = extractDownloadFilename(
+        response.headers.get('Content-Disposition') ?? '',
+        'notes-export.zip'
+      );
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      toast.success(`Exported ${count} note${count === 1 ? '' : 's'} as .${format} zip`);
+      exitSelectionMode();
+    } catch {
+      toast.error('Batch export failed');
+    } finally {
+      isBatchExporting = false;
+    }
+  }
+
   // Cleanup pending deletions on component unmount
   $effect(() => {
     return () => {
@@ -649,6 +750,14 @@
           onTagClick={handleTagClickFromCard}
           onCreateNew={handleCreateNew}
           onClearFilters={handleClearAllFilters}
+          {selectionMode}
+          selectedIds={selectedNoteIds}
+          onToggleSelect={toggleSelection}
+          onToggleSelectionMode={toggleSelectionMode}
+          onSelectAll={selectAllNotes}
+          onClearSelection={clearSelection}
+          onBatchExport={handleBatchExport}
+          {visibleNoteIds}
         />
       </div>
     </section>
