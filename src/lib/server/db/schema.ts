@@ -129,12 +129,37 @@ export const noteTags = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// 6. Drizzle Relations
+// 6. Google Connections Table
 // ---------------------------------------------------------------------------
-export const usersRelations = relations(users, ({ many }) => ({
+export const googleConnections = pgTable(
+  'google_connections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    googleSub: varchar('google_sub', { length: 255 }).notNull(),
+    email: varchar('email', { length: 255 }),
+    accessToken: text('access_token').notNull(),
+    refreshToken: text('refresh_token'),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull(),
+    scope: text('scope'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('google_connections_user_id_unique').on(table.userId),
+  ]
+);
+
+// ---------------------------------------------------------------------------
+// 7. Drizzle Relations
+// ---------------------------------------------------------------------------
+export const usersRelations = relations(users, ({ one, many }) => ({
   sessions: many(sessions),
   notes: many(notes),
   tags: many(tags),
+  googleConnection: one(googleConnections),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -171,8 +196,18 @@ export const noteTagsRelations = relations(noteTags, ({ one }) => ({
   }),
 }));
 
+export const googleConnectionsRelations = relations(
+  googleConnections,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [googleConnections.userId],
+      references: [users.id],
+    }),
+  })
+);
+
 // ---------------------------------------------------------------------------
-// 7. Type Definitions Matching PROJECT.md Contracts
+// 8. Type Definitions Matching PROJECT.md Contracts
 // ---------------------------------------------------------------------------
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -188,6 +223,9 @@ export type NewTag = typeof tags.$inferInsert;
 
 export type NoteTag = typeof noteTags.$inferSelect;
 export type NewNoteTag = typeof noteTags.$inferInsert;
+
+export type GoogleConnection = typeof googleConnections.$inferSelect;
+export type NewGoogleConnection = typeof googleConnections.$inferInsert;
 
 export interface NoteWithTags extends Note {
   tags: Tag[];
