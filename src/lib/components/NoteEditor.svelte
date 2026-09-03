@@ -429,6 +429,40 @@
       isExporting = null;
     }
   }
+
+  let isUploadingToDrive = $state(false);
+
+  async function handleExportToDrive() {
+    if (!note?.id || isNew || isUploadingToDrive) return;
+    closeExportMenu();
+    isUploadingToDrive = true;
+    try {
+      const response = await fetch(`/api/notes/${note.id}/export/drive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format: 'docx' }),
+      });
+      const result = (await response.json().catch(() => null)) as { fileId?: string; link?: string | null; error?: string; code?: string } | null;
+      if (!response.ok) {
+        if (result?.code === 'google_not_connected') {
+          toast.info('Connect your Google account to save to Drive');
+          window.location.href = '/google';
+          return;
+        }
+        throw new Error(result?.error || `Upload failed (${response.status})`);
+      }
+      const link = result?.link ?? null;
+      if (link) {
+        toast.showWithAction(`Uploaded "${title.trim() || 'Note'}" to Google Drive`, { label: 'Open', onClick: () => { window.open(link, '_blank', 'noopener'); } }, 'success', 6000);
+      } else {
+        toast.success(`Uploaded "${title.trim() || 'Note'}" to Google Drive`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Google Drive upload failed');
+    } finally {
+      isUploadingToDrive = false;
+    }
+  }
 </script>
 
 <div class="note-editor-wrapper">
@@ -517,9 +551,9 @@
               title="Export note as document"
               aria-label="Export note as document"
               data-testid="export-note-btn"
-              disabled={isExporting !== null}
+              disabled={isExporting !== null || isUploadingToDrive}
             >
-              {#if isExporting}
+              {#if isExporting || isUploadingToDrive}
                 <IconSpinner size={13} />
                 <span>Exporting...</span>
               {:else}
@@ -542,6 +576,18 @@
                     <span class="export-item-hint">{item.hint}</span>
                   </button>
                 {/each}
+                <div class="export-menu-divider" role="separator"></div>
+                <button
+                  type="button"
+                  class="export-menu-item"
+                  role="menuitem"
+                  onclick={handleExportToDrive}
+                  disabled={isUploadingToDrive}
+                  data-testid="export-option-drive"
+                >
+                  <span class="export-item-label">Save to Google Drive</span>
+                  <span class="export-item-hint">.docx</span>
+                </button>
               </div>
             {/if}
           </div>
@@ -992,6 +1038,17 @@
     padding: 0.25rem;
     display: flex;
     flex-direction: column;
+  }
+
+  .export-menu-divider {
+    height: 1px;
+    background: #e2e8f0;
+    margin: 0.25rem 0.375rem;
+  }
+
+  .export-menu-item:disabled {
+    opacity: 0.6;
+    cursor: wait;
   }
 
   .export-menu-item {
