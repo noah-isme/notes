@@ -22,6 +22,8 @@
     onDelete?: (noteId: string) => void;
     onTogglePin?: (noteId: string, isPinned: boolean) => void;
     onTagClick?: (tagName: string) => void;
+    selectionMode?: boolean;
+    onToggleSelect?: (noteId: string) => void;
   }
 
   let {
@@ -32,6 +34,8 @@
     onDelete,
     onTogglePin,
     onTagClick,
+    selectionMode = false,
+    onToggleSelect,
   }: NoteCardProps = $props();
 
   let previewSnippet = $derived(stripMarkdown(note.content, 120));
@@ -50,14 +54,27 @@
   });
 
   function handleCardClick() {
+    if (selectionMode) {
+      onToggleSelect?.(note.id);
+      return;
+    }
     onSelect?.(note);
   }
 
   function handleKeyDown(e: KeyboardEvent) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      onSelect?.(note);
+      if (selectionMode) {
+        onToggleSelect?.(note.id);
+      } else {
+        onSelect?.(note);
+      }
     }
+  }
+
+  function handleToggleSelect(e: Event) {
+    e.stopPropagation();
+    onToggleSelect?.(note.id);
   }
 
   function handleTogglePin(e: MouseEvent) {
@@ -82,7 +99,7 @@
 </script>
 
 <div
-  class="note-card {note.isPinned ? 'pinned' : ''} {isSelected ? 'selected' : ''}"
+  class="note-card {note.isPinned ? 'pinned' : ''} {isSelected ? 'selected' : ''} {selectionMode ? 'selection-mode' : ''} {selectionMode && isSelected ? 'batch-selected' : ''}"
   onclick={handleCardClick}
   onkeydown={handleKeyDown}
   tabindex="0"
@@ -90,6 +107,22 @@
   aria-pressed={isSelected}
   aria-label={`Note: ${note.title}`}
 >
+  {#if selectionMode}
+    <div class="select-checkbox-wrap">
+      <input
+        type="checkbox"
+        class="note-select-checkbox"
+        data-testid="note-select-checkbox"
+        aria-label={`Select note ${note.title}`}
+        checked={isSelected}
+        onclick={(e) => e.stopPropagation()}
+        onkeydown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
+        }}
+        onchange={handleToggleSelect}
+      />
+    </div>
+  {/if}
   <div class="card-top-row">
     <h3 class="card-title">
       {#if note.isPinned}
@@ -212,6 +245,44 @@
     background: #f8faff;
     border-left-color: #f59e0b;
     border-color: #2563eb;
+  }
+
+  .note-card.selection-mode {
+    padding-left: 2.75rem;
+  }
+
+  .select-checkbox-wrap {
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+  }
+
+  .note-select-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #2563eb;
+    cursor: pointer;
+    margin: 0;
+  }
+
+  .note-select-checkbox:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+
+  .note-card.batch-selected,
+  .note-card.batch-selected:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    box-shadow: none;
+  }
+
+  .note-card.pinned.batch-selected,
+  .note-card.pinned.batch-selected:hover {
+    border-left-color: #f59e0b;
   }
 
   .card-top-row {

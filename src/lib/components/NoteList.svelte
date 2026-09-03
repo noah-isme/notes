@@ -2,6 +2,8 @@
   import NoteCard, { type NoteCardData } from './NoteCard.svelte';
   import { IconPin, IconNote, IconSearch, IconPlus, IconTag } from './icons';
 
+  export type BatchExportFormat = 'docx' | 'doc' | 'html';
+
   interface NoteListProps {
     notes: NoteCardData[];
     selectedNoteId?: string | null;
@@ -15,6 +17,14 @@
     onTagClick?: (tagName: string) => void;
     onCreateNew?: () => void;
     onClearFilters?: () => void;
+    selectionMode?: boolean;
+    selectedIds?: string[];
+    onToggleSelect?: (noteId: string) => void;
+    onToggleSelectionMode?: () => void;
+    onSelectAll?: (noteIds: string[]) => void;
+    onClearSelection?: () => void;
+    onBatchExport?: (format: BatchExportFormat) => void | Promise<void>;
+    visibleNoteIds?: string[];
   }
 
   let {
@@ -30,11 +40,33 @@
     onTagClick,
     onCreateNew,
     onClearFilters,
+    selectionMode = false,
+    selectedIds = [],
+    onToggleSelect,
+    onToggleSelectionMode,
+    onSelectAll,
+    onClearSelection,
+    onBatchExport,
+    visibleNoteIds = [],
   }: NoteListProps = $props();
 
   let pinnedNotes = $derived(notes.filter((n) => n.isPinned));
   let otherNotes = $derived(notes.filter((n) => !n.isPinned));
   let isFiltered = $derived(Boolean((searchQuery && searchQuery.trim()) || selectedTagId));
+  let hasSelection = $derived(selectedIds.length > 0);
+
+  // Escape exits selection mode; listener only attached while active
+  $effect(() => {
+    if (!selectionMode) return;
+    function handleBatchKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onToggleSelectionMode?.();
+      }
+    }
+    window.addEventListener('keydown', handleBatchKeyDown);
+    return () => window.removeEventListener('keydown', handleBatchKeyDown);
+  });
 </script>
 
 <div class="note-list-container">
@@ -88,6 +120,79 @@
     </div>
   {:else}
     <div class="note-sections-wrapper">
+      {#if onToggleSelectionMode}
+        <div class="batch-controls">
+          <div class="batch-header-row">
+            <button
+              type="button"
+              class="batch-select-toggle {selectionMode ? 'active' : ''}"
+              onclick={onToggleSelectionMode}
+              aria-pressed={selectionMode}
+              title={selectionMode ? 'Exit selection mode (Escape)' : 'Select notes for batch export'}
+              aria-label={selectionMode ? 'Exit selection mode' : 'Select notes for batch export'}
+              data-testid="batch-select-toggle"
+            >
+              {selectionMode ? 'Done' : 'Select'}
+            </button>
+          </div>
+
+          {#if selectionMode}
+            <div
+              class="batch-toolbar"
+              role="toolbar"
+              aria-label="Batch select and export notes"
+              data-testid="batch-toolbar"
+            >
+              <span class="batch-count">{selectedIds.length} selected</span>
+              <button
+                type="button"
+                class="batch-btn"
+                onclick={() => onSelectAll?.(visibleNoteIds)}
+                data-testid="batch-select-all"
+              >
+                Select all
+              </button>
+              <button
+                type="button"
+                class="batch-btn"
+                onclick={onClearSelection}
+                data-testid="batch-clear"
+              >
+                Clear
+              </button>
+              <div class="batch-divider" role="separator" aria-hidden="true"></div>
+              <button
+                type="button"
+                class="batch-btn"
+                onclick={() => onBatchExport?.('docx')}
+                disabled={!hasSelection}
+                data-testid="batch-export-docx"
+              >
+                Word (.docx)
+              </button>
+              <button
+                type="button"
+                class="batch-btn"
+                onclick={() => onBatchExport?.('doc')}
+                disabled={!hasSelection}
+                data-testid="batch-export-doc"
+              >
+                Word 97 (.doc)
+              </button>
+              <button
+                type="button"
+                class="batch-btn"
+                onclick={() => onBatchExport?.('html')}
+                disabled={!hasSelection}
+                data-testid="batch-export-html"
+              >
+                HTML (.html)
+              </button>
+            </div>
+          {/if}
+        </div>
+      {/if}
+
       {#if pinnedNotes.length > 0}
         <div class="section-group">
           <div class="section-header">
@@ -100,12 +205,14 @@
             {#each pinnedNotes as note (note.id)}
               <NoteCard
                 {note}
-                isSelected={selectedNoteId === note.id}
+                isSelected={selectionMode ? selectedIds.includes(note.id) : selectedNoteId === note.id}
                 onSelect={onSelectNote}
                 onEdit={onEditNote}
                 onDelete={onDeleteNote}
                 {onTogglePin}
                 {onTagClick}
+                {selectionMode}
+                {onToggleSelect}
               />
             {/each}
           </div>
@@ -123,12 +230,14 @@
             {#each otherNotes as note (note.id)}
               <NoteCard
                 {note}
-                isSelected={selectedNoteId === note.id}
+                isSelected={selectionMode ? selectedIds.includes(note.id) : selectedNoteId === note.id}
                 onSelect={onSelectNote}
                 onEdit={onEditNote}
                 onDelete={onDeleteNote}
                 {onTogglePin}
                 {onTagClick}
+                {selectionMode}
+                {onToggleSelect}
               />
             {/each}
           </div>
@@ -186,6 +295,109 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  .batch-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .batch-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .batch-select-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .batch-select-toggle:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #94a3b8;
+  }
+
+  .batch-select-toggle.active {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+    font-weight: 600;
+  }
+
+  .batch-select-toggle:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+  }
+
+  .batch-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+  }
+
+  .batch-count {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #0f172a;
+    padding: 0 0.25rem;
+    white-space: nowrap;
+  }
+
+  .batch-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .batch-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #94a3b8;
+  }
+
+  .batch-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .batch-btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+  }
+
+  .batch-divider {
+    width: 1px;
+    height: 1.25rem;
+    background: #cbd5e1;
+    margin: 0 0.25rem;
+    flex-shrink: 0;
   }
 
   .empty-state {
