@@ -273,10 +273,10 @@
     }
   }
 
-  function handleSubmit(e: SubmitEvent) {
+  async function handleSubmit(e: SubmitEvent) {
+    e.preventDefault();
     titleTouched = true;
     if (!isTitleValid) {
-      e.preventDefault();
       return;
     }
     if (onSave) {
@@ -287,6 +287,16 @@
         isPinned,
         tags: tagList,
       });
+    } else {
+      isSubmitting = true;
+      try {
+        const result = await submitSave();
+        if (result.success) {
+          isDirty = false;
+        }
+      } finally {
+        isSubmitting = false;
+      }
     }
   }
 

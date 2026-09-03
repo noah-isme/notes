@@ -480,6 +480,38 @@
       toast.error('An error occurred while updating pin status');
     }
   }
+
+  async function handleSaveNote(saveData: {
+    id?: string;
+    title: string;
+    content: string;
+    isPinned: boolean;
+    tags: string[];
+  }) {
+    if (!editorRef) return;
+    try {
+      const result = await editorRef.submitSave();
+      if (result.success) {
+        toast.success(saveData.id ? 'Note saved successfully' : 'Note created successfully');
+        isEditorDirty = false;
+        if (result.note?.id) {
+          selectedNoteId = result.note.id;
+          isCreatingNew = false;
+
+          const existingIdx = localNotes.findIndex((n) => n.id === result.note.id);
+          if (existingIdx >= 0) {
+            localNotes = localNotes.map((n, i) => (i === existingIdx ? result.note : n));
+          } else {
+            localNotes = [result.note, ...localNotes];
+          }
+        }
+      } else if (result.error) {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error('Failed to save note');
+    }
+  }
 </script>
 
 <svelte:head>
@@ -633,6 +665,7 @@
           onCancel={handleCancelEditor}
           onDelete={handleDeleteNote}
           onTogglePin={handleTogglePin}
+          onSave={handleSaveNote}
         />
       {:else}
         <div class="no-selection-workspace">
