@@ -171,13 +171,15 @@
     data.filters?.tagId ? data.tags.find((t) => t.id === data.filters.tagId) : null
   );
 
-  // Tag counts helper
+  // Tag counts helper - only display active tags with notes
   let tagsWithCounts = $derived(
-    data.tags.map((tag) => ({
-      id: tag.id,
-      name: tag.name,
-      count: localNotes.filter((n) => n.tags?.some((t) => t.id === tag.id)).length,
-    }))
+    data.tags
+      .map((tag) => ({
+        id: tag.id,
+        name: tag.name,
+        count: localNotes.filter((n) => n.tags?.some((t) => t.id === tag.id)).length,
+      }))
+      .filter((tag) => tag.count > 0 || tag.id === data.filters?.tagId)
   );
 
   function confirmIfDirty(action: () => void | Promise<void>) {

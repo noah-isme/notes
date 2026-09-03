@@ -306,13 +306,15 @@ export async function updateNote(
           .onConflictDoNothing();
       }
     }
+
+    await pruneOrphanedTags(userId);
   }
 
   return getNoteById(userId, noteId);
 }
 
 /**
- * Deletes a note owned by the user, cascading note_tags deletions.
+ * Deletes a note owned by the user, cascading note_tags deletions and pruning orphaned tags.
  */
 export async function deleteNote(userId: string, noteId: string): Promise<boolean> {
   const deleted = await db
@@ -320,18 +322,44 @@ export async function deleteNote(userId: string, noteId: string): Promise<boolea
     .where(and(eq(notes.id, noteId), eq(notes.userId, userId)))
     .returning({ id: notes.id });
 
+  if (deleted.length > 0) {
+    await pruneOrphanedTags(userId);
+  }
+
   return deleted.length > 0;
 }
 
 /**
- * Retrieves all distinct tags created by the user, sorted alphabetically.
+ * Retrieves all distinct tags actively used by the user's notes, sorted alphabetically.
  */
 export async function getUserTags(userId: string): Promise<Tag[]> {
   return db
-    .select()
+    .selectDistinct({
+      id: tags.id,
+      userId: tags.userId,
+      name: tags.name,
+      createdAt: tags.createdAt,
+    })
     .from(tags)
+    .innerJoin(noteTags, eq(tags.id, noteTags.tagId))
     .where(eq(tags.userId, userId))
     .orderBy(asc(tags.name));
+}
+
+/**
+ * Prunes orphaned tags that are not associated with any notes.
+ */
+export async function pruneOrphanedTags(userId?: string): Promise<number> {
+  const whereClause = userId
+    ? sql`${tags.id} NOT IN (SELECT ${noteTags.tagId} FROM ${noteTags}) AND ${tags.userId} = ${userId}`
+    : sql`${tags.id} NOT IN (SELECT ${noteTags.tagId} FROM ${noteTags})`;
+
+  const deleted = await db
+    .delete(tags)
+    .where(whereClause)
+    .returning({ id: tags.id });
+
+  return deleted.length;
 }
 
 /**
