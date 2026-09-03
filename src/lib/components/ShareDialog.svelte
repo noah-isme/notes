@@ -7,6 +7,7 @@
     IconRotateCcw,
     IconLink,
     IconAlert,
+    IconSpinner,
   } from './icons';
 
   interface Props {
@@ -273,7 +274,12 @@
                     onclick={handleRegenerateToken}
                     disabled={isLoading}
                   >
-                    {isLoading ? 'Regenerating...' : 'Yes, Regenerate'}
+                    {#if isLoading}
+                      <IconSpinner size={13} />
+                      <span>Regenerating...</span>
+                    {:else}
+                      <span>Yes, Regenerate</span>
+                    {/if}
                   </button>
                   <button
                     type="button"

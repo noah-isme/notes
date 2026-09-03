@@ -18,6 +18,7 @@
     IconClose,
     IconMaximize,
     IconShare,
+    IconSpinner,
   } from './icons';
 
   export interface NoteEditorData {
@@ -576,11 +577,12 @@
           title={note?.id && !isNew ? 'Save changes (Cmd/Ctrl+S)' : 'Save note (Cmd/Ctrl+S)'}
           aria-label={note?.id && !isNew ? 'Save changes' : 'Save note'}
         >
-          {isSubmitting
-            ? 'Saving...'
-            : note?.id && !isNew
-              ? 'Save Changes'
-              : 'Create Note'}
+          {#if isSubmitting}
+            <IconSpinner size={14} />
+            <span>Saving...</span>
+          {:else}
+            <span>{note?.id && !isNew ? 'Save Changes' : 'Create Note'}</span>
+          {/if}
         </button>
       </div>
     </div>

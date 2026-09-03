@@ -1,8 +1,10 @@
 <script lang="ts">
   import type { ActionData } from './$types';
-  import { IconNote, IconAlert } from '$lib/components/icons';
+  import { enhance } from '$app/forms';
+  import { IconNote, IconAlert, IconSpinner } from '$lib/components/icons';
 
-  let { form }: { form: ActionData } = $props();
+  let { form }: { form?: ActionData } = $props();
+  let isSubmitting = $state(false);
 </script>
 
 <svelte:head>
@@ -28,7 +30,17 @@
       </div>
     {/if}
 
-    <form method="POST" class="auth-form">
+    <form
+      method="POST"
+      class="auth-form"
+      use:enhance={() => {
+        isSubmitting = true;
+        return async ({ update }) => {
+          isSubmitting = false;
+          await update();
+        };
+      }}
+    >
       <div class="form-group">
         <label for="email">Email Address</label>
         <input
@@ -56,7 +68,14 @@
         <span class="hint">Minimum 6 characters</span>
       </div>
 
-      <button type="submit" class="btn-primary">Register</button>
+      <button type="submit" class="btn-primary" disabled={isSubmitting}>
+        {#if isSubmitting}
+          <IconSpinner size={14} />
+          <span>Creating account...</span>
+        {:else}
+          <span>Register</span>
+        {/if}
+      </button>
     </form>
 
     <p class="auth-footer">

@@ -1,12 +1,14 @@
 <script lang="ts">
   import type { ActionData } from './$types';
-  import { IconNote, IconAlert } from '$lib/components/icons';
+  import { enhance } from '$app/forms';
+  import { IconNote, IconAlert, IconSpinner } from '$lib/components/icons';
 
-  let { form }: { form: ActionData } = $props();
+  let { form }: { form?: ActionData } = $props();
+  let isSubmitting = $state(false);
 </script>
 
 <svelte:head>
-  <title>Log In | Notes Workspace</title>
+  <title>Login | Notes Workspace</title>
 </svelte:head>
 
 <div class="auth-container">
@@ -17,7 +19,7 @@
       </div>
       <div>
         <h1 class="auth-title">Welcome Back</h1>
-        <p class="auth-subtitle">Log in to access your private notes.</p>
+        <p class="auth-subtitle">Log in to your private notes workspace.</p>
       </div>
     </div>
 
@@ -28,7 +30,17 @@
       </div>
     {/if}
 
-    <form method="POST" class="auth-form">
+    <form
+      method="POST"
+      class="auth-form"
+      use:enhance={() => {
+        isSubmitting = true;
+        return async ({ update }) => {
+          isSubmitting = false;
+          await update();
+        };
+      }}
+    >
       <div class="form-group">
         <label for="email">Email Address</label>
         <input
@@ -54,7 +66,14 @@
         />
       </div>
 
-      <button type="submit" class="btn-primary">Log In</button>
+      <button type="submit" class="btn-primary" disabled={isSubmitting}>
+        {#if isSubmitting}
+          <IconSpinner size={14} />
+          <span>Logging in...</span>
+        {:else}
+          <span>Log In</span>
+        {/if}
+      </button>
     </form>
 
     <p class="auth-footer">
