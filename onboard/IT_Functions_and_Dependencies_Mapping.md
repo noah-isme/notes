@@ -6,6 +6,12 @@
 
 ---
 
+## 📽️ Executive Slide Presentation
+
+![IT Functional Mapping Slide Presentation](/slides/it-functional-mapping-slide.jpg)
+
+---
+
 ## 🌐 1. Executive Summary & Functional Architecture
 
 The **Information Technology (IT)** Department at LeadGeeks Inc. operates as the foundational technical engine that powers all daily operations, secure client delivery, growth automation, and corporate infrastructure.

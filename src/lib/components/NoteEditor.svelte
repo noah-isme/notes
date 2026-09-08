@@ -20,6 +20,7 @@
   import { renderMarkdown } from '$lib/utils/markdown';
   import { mermaidRenderer } from '$lib/actions/mermaid';
   import ShareDialog from './ShareDialog.svelte';
+  import PresentationModal from './PresentationModal.svelte';
   import { toast } from '$lib/stores/toast.svelte';
   import {
     IconPin,
@@ -34,6 +35,7 @@
     IconSpinner,
     IconChevronUp,
     IconDownload,
+    IconPresentation,
   } from './icons';
 
   export interface NoteEditorData {
@@ -91,6 +93,7 @@
   let isPublic = $state(getPropValue(() => note?.isPublic ?? false));
   let shareToken = $state<string | null>(getPropValue(() => note?.shareToken ?? null));
   let isShareDialogOpen = $state(false);
+  let isPresentationOpen = $state(false);
   let tagList = $state<string[]>(getPropValue(() => (note?.tags ? note.tags.map((t) => t.name) : [])));
   let tagInput = $state('');
   let titleTouched = $state(false);
@@ -384,6 +387,17 @@
     return () => window.removeEventListener('keydown', handleKeyDown);
   });
 
+  $effect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault();
+        isPresentationOpen = !isPresentationOpen;
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  });
+
   function extractDownloadFilename(disposition: string, fallback: string): string {
     const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
     if (utf8Match) {
@@ -656,6 +670,19 @@
           <IconMaximize size={13} />
           <span>{isFocusMode ? 'Exit Focus' : 'Focus'}</span>
         </button>
+
+        <!-- Presentation / Slides Mode Toggle -->
+        <button
+          type="button"
+          class="pres-toggle-btn"
+          onclick={() => (isPresentationOpen = true)}
+          title="Start Presentation (Slides mode) [Alt+P]"
+          aria-label="Start Presentation (Slides mode)"
+          data-testid="toggle-presentation-mode"
+        >
+          <IconPresentation size={13} />
+          <span>Present</span>
+        </button>
       </div>
     </div>
 
@@ -803,6 +830,13 @@
       }}
     />
   {/if}
+
+  <PresentationModal
+    isOpen={isPresentationOpen}
+    noteTitle={title || 'Presentation'}
+    markdownContent={content}
+    onClose={() => (isPresentationOpen = false)}
+  />
 </div>
 
 <style>
@@ -1177,6 +1211,33 @@
   }
 
   .focus-toggle-btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+  }
+
+  .pres-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+  }
+
+  .pres-toggle-btn:hover {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+  }
+
+  .pres-toggle-btn:focus-visible {
     outline: 2px solid #2563eb;
     outline-offset: 1px;
   }

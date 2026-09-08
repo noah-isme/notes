@@ -120,6 +120,25 @@ function sanitizeHtml(html: string): string {
 function parseInline(text: string): string {
   let result = text;
 
+  // Markdown images: ![alt](url)
+  result = result.replace(/!\[([^\]]*)\]\(\s*((?:[^\s()]+|\([^\s()]*\))+)\s*\)/g, (_, alt, url) => {
+    const trimmedUrl = url.trim();
+
+    if (isDangerousUrl(trimmedUrl)) {
+      return '';
+    }
+
+    try {
+      const safeUrl = encodeURI(decodeURI(trimmedUrl)).replace(/"/g, '&quot;');
+      const safeAlt = escapeHtml(alt);
+      return `<img src="${safeUrl}" alt="${safeAlt}" loading="lazy" />`;
+    } catch {
+      const safeUrl = escapeHtml(trimmedUrl);
+      const safeAlt = escapeHtml(alt);
+      return `<img src="${safeUrl}" alt="${safeAlt}" loading="lazy" />`;
+    }
+  });
+
   // Markdown links: [text](url)
   result = result.replace(/\[([^\]]+)\]\(\s*((?:[^\s()]+|\([^\s()]*\))+)\s*\)/g, (_, label, url) => {
     const trimmedUrl = url.trim();

@@ -1,13 +1,17 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import MarkdownViewer from '$lib/components/MarkdownViewer.svelte';
+  import PresentationModal from '$lib/components/PresentationModal.svelte';
   import {
     IconNote,
     IconUser,
     IconTag,
+    IconPresentation,
   } from '$lib/components/icons';
 
   let { data }: { data: PageData } = $props();
+
+  let isPresentationOpen = $state(false);
 
   let formattedDate = $derived.by(() => {
     if (!data.note?.updatedAt) return '';
@@ -45,6 +49,16 @@
       </a>
 
       <div class="header-actions">
+        <button
+          type="button"
+          class="btn-present-share"
+          onclick={() => (isPresentationOpen = true)}
+          title="Present as Slides"
+          aria-label="Present as Slides"
+        >
+          <IconPresentation size={14} />
+          <span>Present</span>
+        </button>
         <a href="/login" class="btn-signin">Sign In</a>
         <a href="/register" class="btn-get-started">Get Started</a>
       </div>
@@ -109,6 +123,13 @@
       <a href="/register" class="footer-cta-link">Create your own notes &rarr;</a>
     </div>
   </footer>
+
+  <PresentationModal
+    isOpen={isPresentationOpen}
+    noteTitle={data.note.title || 'Presentation'}
+    markdownContent={data.note.content}
+    onClose={() => (isPresentationOpen = false)}
+  />
 </div>
 
 <style>
@@ -177,6 +198,27 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+  }
+
+  .btn-present-share {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .btn-present-share:hover {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1d4ed8;
   }
 
   .btn-signin {
