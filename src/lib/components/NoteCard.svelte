@@ -123,11 +123,12 @@
       />
     </div>
   {/if}
+
   <div class="card-top-row">
     <h3 class="card-title">
       {#if note.isPinned}
         <span class="pin-indicator" title="Pinned note" aria-label="Pinned">
-          <IconPin size={13} filled={true} class="pin-icon-badge" />
+          <IconPin size={12} filled={true} class="pin-icon-badge" />
         </span>
       {/if}
       <span class="title-text">{note.title}</span>
@@ -141,7 +142,7 @@
         title={note.isPinned ? 'Unpin note' : 'Pin note'}
         aria-label={note.isPinned ? 'Unpin note' : 'Pin note'}
       >
-        <IconPin size={14} filled={note.isPinned} />
+        <IconPin size={13} filled={note.isPinned} />
       </button>
 
       {#if onEdit}
@@ -152,7 +153,7 @@
           title="Edit note"
           aria-label="Edit note"
         >
-          <IconEdit size={14} />
+          <IconEdit size={13} />
         </button>
       {/if}
 
@@ -164,7 +165,7 @@
           title="Delete note"
           aria-label="Delete note"
         >
-          <IconTrash size={14} />
+          <IconTrash size={13} />
         </button>
       {/if}
     </div>
@@ -174,86 +175,83 @@
     {previewSnippet || 'No content'}
   </p>
 
-  {#if note.tags && note.tags.length > 0}
-    <div class="card-tags">
-      {#each note.tags as tag (tag.id)}
-        <button
-          type="button"
-          class="tag-pill"
-          onclick={(e) => handleTagClick(e, tag.name)}
-          aria-label={`Filter by tag ${tag.name}`}
-        >
-          #{tag.name}
-        </button>
-      {/each}
-    </div>
-  {/if}
-
-  <div class="card-footer">
-    {#if formattedDate}
-      <time class="card-date" datetime={new Date(note.updatedAt).toISOString()}>
-        {formattedDate}
-      </time>
+  <div class="card-bottom-row">
+    {#if note.tags && note.tags.length > 0}
+      <div class="card-tags">
+        {#each note.tags as tag (tag.id)}
+          <button
+            type="button"
+            class="tag-pill"
+            onclick={(e) => handleTagClick(e, tag.name)}
+            aria-label={`Filter by tag ${tag.name}`}
+          >
+            #{tag.name}
+          </button>
+        {/each}
+      </div>
     {/if}
+
+    <div class="card-footer">
+      {#if formattedDate}
+        <time class="card-date" datetime={new Date(note.updatedAt).toISOString()}>
+          {formattedDate}
+        </time>
+      {/if}
+    </div>
   </div>
 </div>
 
 <style>
   .note-card {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 0.875rem 1rem;
+    border: 1px solid #f1f5f9;
+    border-radius: 6px;
+    padding: 0.75rem 0.875rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.375rem;
     cursor: pointer;
     text-align: left;
-    transition:
-      box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-      transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-      border-color 0.15s ease,
-      background-color 0.15s ease;
+    transition: all 0.15s ease;
     user-select: none;
     box-sizing: border-box;
     position: relative;
+    margin-bottom: 0.375rem;
   }
 
   .note-card:hover {
-    border-color: #cbd5e1;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-    transform: translateY(-1px);
+    background: #f8fafc;
+    border-color: #e2e8f0;
   }
 
   .note-card:focus-visible {
     outline: 2px solid #2563eb;
-    outline-offset: 2px;
+    outline-offset: 1px;
   }
 
   .note-card.selected {
-    border-color: #2563eb;
-    background: #f8faff;
-    box-shadow: 0 0 0 1px #2563eb;
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    box-shadow: inset 3px 0 0 #2563eb;
   }
 
   .note-card.pinned {
-    border-left: 3px solid #f59e0b;
     background: #ffffff;
   }
 
   .note-card.pinned.selected {
-    background: #f8faff;
-    border-left-color: #f59e0b;
-    border-color: #2563eb;
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    box-shadow: inset 3px 0 0 #2563eb;
   }
 
   .note-card.selection-mode {
-    padding-left: 2.75rem;
+    padding-left: 2.5rem;
   }
 
   .select-checkbox-wrap {
     position: absolute;
-    left: 0.875rem;
+    left: 0.75rem;
     top: 50%;
     transform: translateY(-50%);
     display: flex;
@@ -261,8 +259,8 @@
   }
 
   .note-select-checkbox {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     accent-color: #2563eb;
     cursor: pointer;
     margin: 0;
@@ -270,19 +268,13 @@
 
   .note-select-checkbox:focus-visible {
     outline: 2px solid #2563eb;
-    outline-offset: 2px;
+    outline-offset: 1px;
   }
 
   .note-card.batch-selected,
   .note-card.batch-selected:hover {
     background: #eff6ff;
     border-color: #93c5fd;
-    box-shadow: none;
-  }
-
-  .note-card.pinned.batch-selected,
-  .note-card.pinned.batch-selected:hover {
-    border-left-color: #f59e0b;
   }
 
   .card-top-row {
@@ -295,12 +287,12 @@
 
   .card-title {
     margin: 0;
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: #0f172a;
     display: flex;
     align-items: center;
-    gap: 0.375rem;
+    gap: 0.3125rem;
     line-height: 1.35;
     word-break: break-word;
     overflow-wrap: break-word;
@@ -323,39 +315,41 @@
     overflow-wrap: break-word;
   }
 
+  /* Progressive Disclosure: Quick actions revealed on hover/focus */
   .card-actions {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.125rem;
     flex-shrink: 0;
-    opacity: 0.7;
+    opacity: 0;
+    pointer-events: none;
     transition: opacity 0.15s ease;
   }
 
   .note-card:hover .card-actions,
+  .note-card:focus-within .card-actions,
   .note-card.selected .card-actions {
     opacity: 1;
+    pointer-events: auto;
   }
 
   .action-btn {
     background: transparent;
     border: none;
     cursor: pointer;
-    min-width: 32px;
-    min-height: 32px;
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
     padding: 0;
-    border-radius: 6px;
+    border-radius: 4px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #64748b;
-    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    color: #94a3b8;
+    transition: all 0.15s ease;
   }
 
   .action-btn:hover {
-    background: #f1f5f9;
+    background: #e2e8f0;
     color: #0f172a;
   }
 
@@ -375,8 +369,8 @@
 
   .card-preview {
     margin: 0;
-    font-size: 0.8125rem;
-    color: #475569;
+    font-size: 0.78125rem;
+    color: #64748b;
     line-height: 1.45;
     word-break: break-word;
     display: -webkit-box;
@@ -386,24 +380,35 @@
     overflow: hidden;
   }
 
-  .card-tags {
+  .card-bottom-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
     margin-top: 0.125rem;
   }
 
+  .card-tags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    min-width: 0;
+    overflow: hidden;
+  }
+
   .tag-pill {
-    background: #f1f5f9;
-    color: #475569;
+    background: #f8fafc;
+    color: #64748b;
     font-size: 0.6875rem;
     font-weight: 500;
-    padding: 0.125rem 0.4375rem;
+    padding: 0.0625rem 0.375rem;
     border-radius: 4px;
     border: 1px solid #e2e8f0;
     cursor: pointer;
     transition: all 0.15s ease;
     font-family: inherit;
+    white-space: nowrap;
   }
 
   .tag-pill:hover {
@@ -415,11 +420,10 @@
   .card-footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     font-size: 0.6875rem;
     color: #94a3b8;
-    margin-top: auto;
-    padding-top: 0.25rem;
+    margin-left: auto;
+    flex-shrink: 0;
   }
 
   .card-date {

@@ -75,9 +75,9 @@
       {#if isFiltered}
         <div class="empty-icon-wrapper">
           {#if searchQuery}
-            <IconSearch size={28} />
+            <IconSearch size={24} />
           {:else}
-            <IconTag size={28} />
+            <IconTag size={24} />
           {/if}
         </div>
         <h4 class="empty-title">No notes found</h4>
@@ -100,7 +100,7 @@
         {/if}
       {:else}
         <div class="empty-icon-wrapper">
-          <IconNote size={28} />
+          <IconNote size={24} />
         </div>
         <h4 class="empty-title">No notes yet</h4>
         <p class="empty-desc">Create your first note to get started organizing your thoughts.</p>
@@ -123,6 +123,7 @@
       {#if onToggleSelectionMode}
         <div class="batch-controls">
           <div class="batch-header-row">
+            <span class="notes-count-summary">{notes.length} {notes.length === 1 ? 'note' : 'notes'}</span>
             <button
               type="button"
               class="batch-select-toggle {selectionMode ? 'active' : ''}"
@@ -143,51 +144,55 @@
               aria-label="Batch select and export notes"
               data-testid="batch-toolbar"
             >
-              <span class="batch-count">{selectedIds.length} selected</span>
-              <button
-                type="button"
-                class="batch-btn"
-                onclick={() => onSelectAll?.(visibleNoteIds)}
-                data-testid="batch-select-all"
-              >
-                Select all
-              </button>
-              <button
-                type="button"
-                class="batch-btn"
-                onclick={onClearSelection}
-                data-testid="batch-clear"
-              >
-                Clear
-              </button>
+              <div class="batch-actions-left">
+                <span class="batch-count">{selectedIds.length} selected</span>
+                <button
+                  type="button"
+                  class="batch-btn"
+                  onclick={() => onSelectAll?.(visibleNoteIds)}
+                  data-testid="batch-select-all"
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  class="batch-btn"
+                  onclick={onClearSelection}
+                  data-testid="batch-clear"
+                >
+                  Clear
+                </button>
+              </div>
               <div class="batch-divider" role="separator" aria-hidden="true"></div>
-              <button
-                type="button"
-                class="batch-btn"
-                onclick={() => onBatchExport?.('docx')}
-                disabled={!hasSelection}
-                data-testid="batch-export-docx"
-              >
-                Word (.docx)
-              </button>
-              <button
-                type="button"
-                class="batch-btn"
-                onclick={() => onBatchExport?.('doc')}
-                disabled={!hasSelection}
-                data-testid="batch-export-doc"
-              >
-                Word 97 (.doc)
-              </button>
-              <button
-                type="button"
-                class="batch-btn"
-                onclick={() => onBatchExport?.('html')}
-                disabled={!hasSelection}
-                data-testid="batch-export-html"
-              >
-                HTML (.html)
-              </button>
+              <div class="batch-actions-right">
+                <button
+                  type="button"
+                  class="batch-btn export-btn"
+                  onclick={() => onBatchExport?.('docx')}
+                  disabled={!hasSelection}
+                  data-testid="batch-export-docx"
+                >
+                  Word (.docx)
+                </button>
+                <button
+                  type="button"
+                  class="batch-btn export-btn"
+                  onclick={() => onBatchExport?.('doc')}
+                  disabled={!hasSelection}
+                  data-testid="batch-export-doc"
+                >
+                  Word 97 (.doc)
+                </button>
+                <button
+                  type="button"
+                  class="batch-btn export-btn"
+                  onclick={() => onBatchExport?.('html')}
+                  disabled={!hasSelection}
+                  data-testid="batch-export-html"
+                >
+                  HTML (.html)
+                </button>
+              </div>
             </div>
           {/if}
         </div>
@@ -197,7 +202,7 @@
         <div class="section-group">
           <div class="section-header">
             <span class="section-title">
-              <IconPin size={12} filled={true} class="section-pin-icon" />
+              <IconPin size={11} filled={true} class="section-pin-icon" />
               Pinned ({pinnedNotes.length})
             </span>
           </div>
@@ -253,73 +258,79 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem 0.75rem 1rem 0.75rem;
   }
 
   .note-sections-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 0.75rem;
   }
 
   .section-group {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.25rem;
   }
 
   .section-header {
     display: flex;
     align-items: center;
-    padding: 0.35rem 0.375rem;
+    padding: 0.25rem 0.25rem;
     position: sticky;
     top: 0;
     z-index: 5;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    background: rgba(248, 250, 252, 0.92);
-    border-radius: 4px;
+    background: #ffffff;
   }
 
   .section-title {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
+    gap: 0.3125rem;
     font-size: 0.6875rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #64748b;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
   }
 
   .cards-stack {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
   }
 
   .batch-controls {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.375rem;
+    margin-bottom: 0.25rem;
   }
 
   .batch-header-row {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
+    padding: 0 0.25rem;
+  }
+
+  .notes-count-summary {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 500;
   }
 
   .batch-select-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
+    gap: 0.25rem;
+    padding: 0.1875rem 0.5rem;
+    font-size: 0.75rem;
     font-weight: 500;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: #f8fafc;
-    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    background: transparent;
+    color: #64748b;
     cursor: pointer;
     transition: all 0.15s ease;
   }
@@ -327,7 +338,7 @@
   .batch-select-toggle:hover {
     background: #f1f5f9;
     color: #0f172a;
-    border-color: #94a3b8;
+    border-color: #cbd5e1;
   }
 
   .batch-select-toggle.active {
@@ -345,6 +356,7 @@
   .batch-toolbar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     flex-wrap: wrap;
     gap: 0.375rem;
     padding: 0.375rem 0.5rem;
@@ -353,8 +365,16 @@
     border-radius: 6px;
   }
 
+  .batch-actions-left,
+  .batch-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+  }
+
   .batch-count {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: #0f172a;
     padding: 0 0.25rem;
@@ -364,26 +384,31 @@
   .batch-btn {
     display: inline-flex;
     align-items: center;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.6875rem;
     font-weight: 500;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
     background: #ffffff;
     color: #475569;
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
+    font-family: inherit;
   }
 
   .batch-btn:hover:not(:disabled) {
     background: #f1f5f9;
     color: #0f172a;
-    border-color: #94a3b8;
+    border-color: #cbd5e1;
+  }
+
+  .batch-btn.export-btn {
+    background: #f8fafc;
   }
 
   .batch-btn:disabled {
-    opacity: 0.55;
+    opacity: 0.45;
     cursor: not-allowed;
   }
 
@@ -394,9 +419,9 @@
 
   .batch-divider {
     width: 1px;
-    height: 1.25rem;
+    height: 1rem;
     background: #cbd5e1;
-    margin: 0 0.25rem;
+    margin: 0 0.125rem;
     flex-shrink: 0;
   }
 
@@ -407,10 +432,8 @@
     justify-content: center;
     text-align: center;
     padding: 3rem 1.5rem;
-    background: #ffffff;
-    border: 1px dashed #cbd5e1;
-    border-radius: 8px;
-    gap: 0.75rem;
+    background: transparent;
+    gap: 0.5rem;
   }
 
   .empty-icon-wrapper {
@@ -418,14 +441,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.5rem;
-    background: #f8fafc;
+    width: 44px;
+    height: 44px;
+    background: #f1f5f9;
     border-radius: 50%;
+    margin-bottom: 0.25rem;
   }
 
   .empty-title {
     margin: 0;
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: #0f172a;
   }
@@ -434,8 +459,8 @@
     margin: 0;
     font-size: 0.8125rem;
     color: #64748b;
-    max-width: 280px;
-    line-height: 1.4;
+    max-width: 240px;
+    line-height: 1.45;
   }
 
   .btn-create-empty {
@@ -443,7 +468,7 @@
     background: #2563eb;
     color: #ffffff;
     border: none;
-    padding: 0.5rem 1rem;
+    padding: 0.4375rem 0.875rem;
     font-size: 0.8125rem;
     font-weight: 600;
     border-radius: 6px;
@@ -460,11 +485,11 @@
 
   .btn-clear-empty {
     margin-top: 0.5rem;
-    background: #f8fafc;
+    background: #ffffff;
     color: #475569;
-    border: 1px solid #cbd5e1;
-    padding: 0.4rem 0.875rem;
-    font-size: 0.8125rem;
+    border: 1px solid #e2e8f0;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
     font-weight: 500;
     border-radius: 6px;
     cursor: pointer;
@@ -474,5 +499,6 @@
   .btn-clear-empty:hover {
     background: #f1f5f9;
     color: #0f172a;
+    border-color: #cbd5e1;
   }
 </style>

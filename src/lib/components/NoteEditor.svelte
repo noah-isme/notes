@@ -36,6 +36,8 @@
     IconChevronUp,
     IconDownload,
     IconPresentation,
+    IconMore,
+    IconCheck,
   } from './icons';
 
   export interface NoteEditorData {
@@ -94,6 +96,7 @@
   let shareToken = $state<string | null>(getPropValue(() => note?.shareToken ?? null));
   let isShareDialogOpen = $state(false);
   let isPresentationOpen = $state(false);
+  let isMoreMenuOpen = $state(false);
   let tagList = $state<string[]>(getPropValue(() => (note?.tags ? note.tags.map((t) => t.name) : [])));
   let tagInput = $state('');
   let titleTouched = $state(false);
@@ -148,6 +151,7 @@
       tagList = [...initialTagList];
       tagInput = '';
       titleTouched = false;
+      isMoreMenuOpen = false;
     }
   });
 
@@ -354,10 +358,12 @@
 
   function handleToggleFocus() {
     isFocusMode = !isFocusMode;
+    isMoreMenuOpen = false;
     onToggleFocusMode?.();
   }
 
   function handleDelete() {
+    isMoreMenuOpen = false;
     if (note?.id && onDelete) {
       onDelete(note.id);
     }
@@ -371,17 +377,16 @@
     { format: 'html', label: 'Google Docs', hint: '.html' },
   ];
 
-  let isExportMenuOpen = $state(false);
   let isExporting = $state<ExportFormat | null>(null);
 
-  function closeExportMenu() {
-    isExportMenuOpen = false;
+  function closeMoreMenu() {
+    isMoreMenuOpen = false;
   }
 
   $effect(() => {
-    if (!isExportMenuOpen) return;
+    if (!isMoreMenuOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeExportMenu();
+      if (e.key === 'Escape') closeMoreMenu();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -413,7 +418,7 @@
 
   async function handleExport(format: ExportFormat) {
     if (!note?.id || isNew || isExporting) return;
-    closeExportMenu();
+    closeMoreMenu();
     isExporting = format;
 
     try {
@@ -448,7 +453,7 @@
 
   async function handleExportToDrive() {
     if (!note?.id || isNew || isUploadingToDrive) return;
-    closeExportMenu();
+    closeMoreMenu();
     isUploadingToDrive = true;
     try {
       const response = await fetch(`/api/notes/${note.id}/export/drive`, {
@@ -479,10 +484,10 @@
   }
 </script>
 
-<div class="note-editor-wrapper">
+<div class="note-editor-wrapper {isFocusMode ? 'focus-mode' : ''}">
   {#if formError}
     <div class="alert-error" role="alert">
-      <IconAlert size={16} />
+      <IconAlert size={15} />
       <span>{formError}</span>
     </div>
   {/if}
@@ -501,14 +506,15 @@
     <input type="hidden" name="tags" value={tagsFormatted} />
     <input type="hidden" name="isPinned" value={isPinned ? 'true' : 'false'} />
 
-    <!-- Top Toolbar: Title & Meta Controls -->
-    <div class="editor-header">
-      <div class="title-input-group">
+    <!-- Calm Centered Container for Title & Metadata -->
+    <div class="canvas-header-container {viewMode === 'split' ? 'full-width' : ''}">
+      <!-- Note Title -->
+      <div class="title-input-row">
         <input
           type="text"
           name="title"
           class="title-input {titleTouched && !isTitleValid ? 'invalid' : ''}"
-          placeholder="Note title..."
+          placeholder="Untitled Note..."
           bind:value={title}
           onblur={() => (titleTouched = true)}
           maxlength="200"
@@ -520,208 +526,295 @@
         </span>
       </div>
 
-      <div class="top-controls">
-        {#if isDirtyDerived}
-          <span class="unsaved-badge" role="status" aria-label="Unsaved changes">
-            <span class="unsaved-dot" aria-hidden="true">●</span>
-            <span>Unsaved changes</span>
-          </span>
-        {/if}
+      <!-- Metadata & Tags Row -->
+      <div class="metadata-row">
+        <div class="tags-manager-row">
+          <div class="tag-chips-container">
+            {#each tagList as tag, idx (tag + idx)}
+              <span class="tag-chip">
+                #{tag}
+                <button
+                  type="button"
+                  class="tag-remove-btn"
+                  onclick={() => removeTag(idx)}
+                  aria-label={`Remove tag ${tag}`}
+                >
+                  <IconClose size={10} />
+                </button>
+              </span>
+            {/each}
+            <input
+              type="text"
+              class="tag-inline-input"
+              placeholder="+ tag..."
+              bind:value={tagInput}
+              onkeydown={handleTagKeyDown}
+              onblur={handleTagBlur}
+            />
+          </div>
+        </div>
 
-        <label class="pin-toggle-btn {isPinned ? 'pinned' : ''}" title={isPinned ? 'Unpin note' : 'Pin note'}>
-          <input
-            type="checkbox"
-            checked={isPinned}
-            onchange={handlePinToggle}
-            class="sr-only"
-            aria-label={isPinned ? 'Unpin note' : 'Pin note'}
-          />
-          <IconPin size={13} filled={isPinned} />
-          <span>{isPinned ? 'Pinned' : 'Pin'}</span>
-        </label>
-
-        {#if note?.id && !isNew}
+        {#if isPublic}
           <button
             type="button"
-            class="share-toggle-btn {isPublic ? 'is-shared' : ''}"
+            class="public-badge-pill"
             onclick={() => (isShareDialogOpen = true)}
-            title={isPublic ? 'Public sharing enabled (click to manage)' : 'Share note'}
-            aria-label={isPublic ? 'Public sharing enabled' : 'Share note'}
-            data-testid="share-note-btn"
+            title="Publicly shared note (click to manage)"
           >
-            <IconShare size={13} />
-            <span>{isPublic ? 'Shared' : 'Share'}</span>
+            <span class="public-dot"></span>
+            <span>Public link active</span>
           </button>
         {/if}
+      </div>
 
-        {#if note?.id && !isNew}
-          <div class="export-menu-wrapper" use:onOutsideClick={closeExportMenu}>
+      <!-- Minimal Toolbar -->
+      <div class="minimal-toolbar">
+        <div class="toolbar-left">
+          <!-- View Mode Switcher -->
+          <div
+            class="view-mode-tabs segmented-control"
+            role="tablist"
+            aria-label="Editor View Modes"
+          >
             <button
               type="button"
-              class="export-toggle-btn"
-              onclick={() => (isExportMenuOpen = !isExportMenuOpen)}
+              class="mode-btn {viewMode === 'edit' ? 'active' : ''} btn-segmented"
+              onclick={() => (viewMode = 'edit')}
+              onkeydown={handleViewModeKeyDown}
+              role="tab"
+              aria-selected={viewMode === 'edit'}
+              tabindex={viewMode === 'edit' ? 0 : -1}
+              title="Edit mode"
+              data-testid="mode-edit"
+            >
+              <IconEdit size={13} />
+              <span>Edit</span>
+            </button>
+            <button
+              type="button"
+              class="mode-btn {viewMode === 'split' ? 'active' : ''} btn-segmented"
+              onclick={() => (viewMode = 'split')}
+              onkeydown={handleViewModeKeyDown}
+              role="tab"
+              aria-selected={viewMode === 'split'}
+              tabindex={viewMode === 'split' ? 0 : -1}
+              title="Split mode"
+              data-testid="mode-split"
+            >
+              <IconSplit size={13} />
+              <span>Split</span>
+            </button>
+            <button
+              type="button"
+              class="mode-btn {viewMode === 'preview' ? 'active' : ''} btn-segmented"
+              onclick={() => (viewMode = 'preview')}
+              onkeydown={handleViewModeKeyDown}
+              role="tab"
+              aria-selected={viewMode === 'preview'}
+              tabindex={viewMode === 'preview' ? 0 : -1}
+              title="Preview mode"
+              data-testid="mode-preview"
+            >
+              <IconEye size={13} />
+              <span>Preview</span>
+            </button>
+          </div>
+
+          <!-- Autosave / Saved Status Indicator -->
+          <div class="status-indicator-wrap">
+            {#if isDirtyDerived}
+              <span class="unsaved-badge" role="status" aria-label="Unsaved changes">
+                <span class="unsaved-dot" aria-hidden="true">●</span>
+                <span>Unsaved changes</span>
+              </span>
+            {:else if note?.id && !isNew}
+              <span class="saved-badge" role="status" aria-label="All changes saved">
+                <IconCheck size={12} />
+                <span>Saved</span>
+              </span>
+            {/if}
+          </div>
+        </div>
+
+        <div class="toolbar-right">
+          <!-- Pin Note Button -->
+          <label
+            class="pin-toggle-btn {isPinned ? 'pinned' : ''}"
+            title={isPinned ? 'Unpin note' : 'Pin note'}
+          >
+            <input
+              type="checkbox"
+              checked={isPinned}
+              onchange={handlePinToggle}
+              class="sr-only"
+              aria-label={isPinned ? 'Unpin note' : 'Pin note'}
+            />
+            <IconPin size={13} filled={isPinned} />
+            <span>{isPinned ? 'Pinned' : 'Pin'}</span>
+          </label>
+
+          <!-- Share Note Button (Available for saved notes) -->
+          {#if note?.id && !isNew}
+            <button
+              type="button"
+              class="share-toggle-btn {isPublic ? 'is-shared' : ''}"
+              onclick={() => (isShareDialogOpen = true)}
+              title={isPublic ? 'Public sharing enabled (click to manage)' : 'Share note'}
+              aria-label={isPublic ? 'Public sharing enabled' : 'Share note'}
+              data-testid="share-note-btn"
+            >
+              <IconShare size={13} />
+              <span>{isPublic ? 'Shared' : 'Share'}</span>
+            </button>
+          {/if}
+
+          <!-- More Secondary Actions Dropdown Menu -->
+          <div class="more-menu-wrapper" use:onOutsideClick={closeMoreMenu}>
+            <button
+              type="button"
+              class="btn-tool more-toggle-btn {isMoreMenuOpen ? 'active' : ''}"
+              onclick={() => (isMoreMenuOpen = !isMoreMenuOpen)}
               aria-haspopup="menu"
-              aria-expanded={isExportMenuOpen}
-              title="Export note as document"
-              aria-label="Export note as document"
+              aria-expanded={isMoreMenuOpen}
+              title="More actions"
+              aria-label="More actions"
               data-testid="export-note-btn"
-              disabled={isExporting !== null || isUploadingToDrive}
             >
               {#if isExporting || isUploadingToDrive}
-                <IconSpinner size={13} />
-                <span>Exporting...</span>
+                <IconSpinner size={14} />
               {:else}
-                <IconDownload size={13} />
-                <span>Export</span>
+                <IconMore size={16} />
               {/if}
             </button>
 
-            {#if isExportMenuOpen}
-              <div class="export-menu" role="menu" aria-label="Export formats" data-testid="export-menu">
+            <!-- Dropdown Menu (Rendered in DOM for keyboard accessibility & tests) -->
+            <div
+              class="more-menu-dropdown {isMoreMenuOpen ? 'open' : ''}"
+              role="menu"
+              aria-label="More actions menu"
+              data-testid="export-menu"
+            >
+              <!-- Present Slideshow -->
+              <button
+                type="button"
+                class="dropdown-item pres-toggle-btn"
+                role="menuitem"
+                onclick={() => {
+                  isMoreMenuOpen = false;
+                  isPresentationOpen = true;
+                }}
+                title="Start Presentation (Slides mode) [Alt+P]"
+                aria-label="Start Presentation (Slides mode)"
+                data-testid="toggle-presentation-mode"
+              >
+                <span class="dropdown-item-left">
+                  <IconPresentation size={14} />
+                  <span>Present Slides</span>
+                </span>
+                <span class="dropdown-item-hint">Alt+P</span>
+              </button>
+
+              <!-- Focus Mode Toggle -->
+              <button
+                type="button"
+                class="dropdown-item focus-toggle-btn {isFocusMode ? 'active' : ''}"
+                onclick={handleToggleFocus}
+                title={isFocusMode ? 'Exit focus mode (Esc)' : 'Enter focus mode'}
+                aria-label={isFocusMode ? 'Exit focus mode' : 'Enter focus mode'}
+                aria-pressed={isFocusMode}
+                data-testid="toggle-focus-mode"
+              >
+                <span class="dropdown-item-left">
+                  <IconMaximize size={14} />
+                  <span>{isFocusMode ? 'Exit Focus' : 'Focus'}</span>
+                </span>
+                <span class="dropdown-item-hint">Esc</span>
+              </button>
+
+              {#if note?.id && !isNew}
+                <div class="dropdown-divider" role="separator"></div>
+
+                <div class="dropdown-section-label">EXPORT DOCUMENT</div>
+
                 {#each exportFormats as item (item.format)}
                   <button
                     type="button"
-                    class="export-menu-item"
+                    class="dropdown-item export-menu-item"
                     role="menuitem"
                     onclick={() => handleExport(item.format)}
+                    disabled={isExporting !== null || isUploadingToDrive}
                     data-testid={`export-option-${item.format}`}
                   >
-                    <span class="export-item-label">{item.label}</span>
-                    <span class="export-item-hint">{item.hint}</span>
+                    <span class="dropdown-item-left">
+                      <IconDownload size={14} />
+                      <span>{item.label}</span>
+                    </span>
+                    <span class="dropdown-item-hint">{item.hint}</span>
                   </button>
                 {/each}
-                <div class="export-menu-divider" role="separator"></div>
+
                 <button
                   type="button"
-                  class="export-menu-item"
+                  class="dropdown-item export-menu-item"
                   role="menuitem"
                   onclick={handleExportToDrive}
-                  disabled={isUploadingToDrive}
+                  disabled={isUploadingToDrive || isExporting !== null}
                   data-testid="export-option-drive"
                 >
-                  <span class="export-item-label">Save to Google Drive</span>
-                  <span class="export-item-hint">.docx</span>
+                  <span class="dropdown-item-left">
+                    <IconDownload size={14} />
+                    <span>Save to Google Drive</span>
+                  </span>
+                  <span class="dropdown-item-hint">.docx</span>
                 </button>
-              </div>
-            {/if}
-          </div>
-        {/if}
+              {/if}
 
-        <!-- View Mode Switcher -->
-        <div
-          class="view-mode-tabs segmented-control"
-          role="tablist"
-          aria-label="Editor View Modes"
-        >
+              {#if note?.id && onDelete}
+                <div class="dropdown-divider" role="separator"></div>
+                <button
+                  type="button"
+                  class="dropdown-item danger-item btn-danger"
+                  role="menuitem"
+                  onclick={handleDelete}
+                  disabled={isSubmitting}
+                >
+                  <span class="dropdown-item-left">
+                    <IconTrash size={14} />
+                    <span>Delete Note</span>
+                  </span>
+                </button>
+              {/if}
+            </div>
+          </div>
+
+          <!-- Save Button -->
           <button
-            type="button"
-            class="mode-btn {viewMode === 'edit' ? 'active' : ''} btn-segmented"
-            onclick={() => (viewMode = 'edit')}
-            onkeydown={handleViewModeKeyDown}
-            role="tab"
-            aria-selected={viewMode === 'edit'}
-            tabindex={viewMode === 'edit' ? 0 : -1}
-            title="Edit mode"
-            data-testid="mode-edit"
+            type="submit"
+            class="btn-primary {isDirtyDerived ? 'is-dirty' : ''}"
+            disabled={isSubmitting || (titleTouched && !isTitleValid)}
+            title={note?.id && !isNew ? 'Save changes (Cmd/Ctrl+S)' : 'Save note (Cmd/Ctrl+S)'}
+            aria-label={note?.id && !isNew ? 'Save changes' : 'Save note'}
           >
-            <IconEdit size={13} />
-            <span>Edit</span>
-          </button>
-          <button
-            type="button"
-            class="mode-btn {viewMode === 'split' ? 'active' : ''} btn-segmented"
-            onclick={() => (viewMode = 'split')}
-            onkeydown={handleViewModeKeyDown}
-            role="tab"
-            aria-selected={viewMode === 'split'}
-            tabindex={viewMode === 'split' ? 0 : -1}
-            title="Split mode"
-            data-testid="mode-split"
-          >
-            <IconSplit size={13} />
-            <span>Split</span>
-          </button>
-          <button
-            type="button"
-            class="mode-btn {viewMode === 'preview' ? 'active' : ''} btn-segmented"
-            onclick={() => (viewMode = 'preview')}
-            onkeydown={handleViewModeKeyDown}
-            role="tab"
-            aria-selected={viewMode === 'preview'}
-            tabindex={viewMode === 'preview' ? 0 : -1}
-            title="Preview mode"
-            data-testid="mode-preview"
-          >
-            <IconEye size={13} />
-            <span>Preview</span>
+            {#if isSubmitting}
+              <IconSpinner size={13} />
+              <span>Saving...</span>
+            {:else}
+              <span>{note?.id && !isNew ? 'Save Changes' : 'Create Note'}</span>
+            {/if}
           </button>
         </div>
-
-        <!-- Focus / Fullscreen Mode Toggle -->
-        <button
-          type="button"
-          class="focus-toggle-btn {isFocusMode ? 'active' : ''}"
-          onclick={handleToggleFocus}
-          title={isFocusMode ? 'Exit focus mode (Esc)' : 'Enter focus mode'}
-          aria-label={isFocusMode ? 'Exit focus mode' : 'Enter focus mode'}
-          aria-pressed={isFocusMode}
-          data-testid="toggle-focus-mode"
-        >
-          <IconMaximize size={13} />
-          <span>{isFocusMode ? 'Exit Focus' : 'Focus'}</span>
-        </button>
-
-        <!-- Presentation / Slides Mode Toggle -->
-        <button
-          type="button"
-          class="pres-toggle-btn"
-          onclick={() => (isPresentationOpen = true)}
-          title="Start Presentation (Slides mode) [Alt+P]"
-          aria-label="Start Presentation (Slides mode)"
-          data-testid="toggle-presentation-mode"
-        >
-          <IconPresentation size={13} />
-          <span>Present</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Tags Management Row -->
-    <div class="tags-manager-row">
-      <span class="tag-label">Tags:</span>
-      <div class="tag-chips-container">
-        {#each tagList as tag, idx (tag + idx)}
-          <span class="tag-chip">
-            #{tag}
-            <button
-              type="button"
-              class="tag-remove-btn"
-              onclick={() => removeTag(idx)}
-              aria-label={`Remove tag ${tag}`}
-            >
-              <IconClose size={10} />
-            </button>
-          </span>
-        {/each}
-        <input
-          type="text"
-          class="tag-inline-input"
-          placeholder="Add tag (press Enter)..."
-          bind:value={tagInput}
-          onkeydown={handleTagKeyDown}
-          onblur={handleTagBlur}
-        />
       </div>
     </div>
 
     <!-- Workspace Body: Edit, Preview, or Split -->
-    <div class="editor-workspace {viewMode}">
-      {#if viewMode === 'edit' || viewMode === 'split'}
-        <div class="workspace-pane editor-pane">
-          <textarea
-            name="content"
-            class="markdown-textarea"
-            placeholder="Write your note in Markdown...
+    <div class="workspace-body-container {viewMode === 'split' ? 'full-width' : ''}">
+      <div class="editor-workspace {viewMode}">
+        {#if viewMode === 'edit' || viewMode === 'split'}
+          <div class="workspace-pane editor-pane">
+            <textarea
+              name="content"
+              class="markdown-textarea"
+              placeholder="Write your note in Markdown...
 
 # Heading 1
 - Lists
@@ -730,88 +823,44 @@
 ```typescript
 // code blocks supported
 ```"
-            bind:value={content}
-            aria-label="Markdown Content"
-          ></textarea>
-        </div>
-      {/if}
-
-      {#if viewMode === 'preview' || viewMode === 'split'}
-        <div
-          bind:this={previewPaneRef}
-          class="workspace-pane preview-pane"
-          role="region"
-          aria-label="Markdown Preview"
-          onscroll={handlePreviewScroll}
-        >
-          {#if renderedPreview}
-            <div class="markdown-preview" use:mermaidRenderer={renderedPreview}>
-              <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-              {@html renderedPreview}
-            </div>
-          {:else}
-            <div class="empty-preview">
-              <em>Markdown preview will appear here as you type...</em>
-            </div>
-          {/if}
-
-          {#if showScrollTopBtn}
-            <button
-              type="button"
-              class="btn-scroll-top"
-              onclick={scrollToTop}
-              title="Scroll to top"
-              aria-label="Scroll to top"
-            >
-              <IconChevronUp size={16} />
-            </button>
-          {/if}
-        </div>
-      {/if}
-    </div>
-
-    <!-- Bottom Actions Toolbar -->
-    <div class="editor-footer">
-      <div class="footer-left">
-        {#if note?.id && onDelete}
-          <button
-            type="button"
-            class="btn-danger"
-            onclick={handleDelete}
-            disabled={isSubmitting}
-          >
-            <IconTrash size={14} />
-            <span>Delete Note</span>
-          </button>
-        {/if}
-      </div>
-
-      <div class="footer-right">
-        {#if onCancel}
-          <button
-            type="button"
-            class="btn-secondary"
-            onclick={onCancel}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </button>
+              bind:value={content}
+              aria-label="Markdown Content"
+            ></textarea>
+          </div>
         {/if}
 
-        <button
-          type="submit"
-          class="btn-primary {isDirtyDerived ? 'is-dirty' : ''}"
-          disabled={isSubmitting || (titleTouched && !isTitleValid)}
-          title={note?.id && !isNew ? 'Save changes (Cmd/Ctrl+S)' : 'Save note (Cmd/Ctrl+S)'}
-          aria-label={note?.id && !isNew ? 'Save changes' : 'Save note'}
-        >
-          {#if isSubmitting}
-            <IconSpinner size={14} />
-            <span>Saving...</span>
-          {:else}
-            <span>{note?.id && !isNew ? 'Save Changes' : 'Create Note'}</span>
-          {/if}
-        </button>
+        {#if viewMode === 'preview' || viewMode === 'split'}
+          <div
+            bind:this={previewPaneRef}
+            class="workspace-pane preview-pane"
+            role="region"
+            aria-label="Markdown Preview"
+            onscroll={handlePreviewScroll}
+          >
+            {#if renderedPreview}
+              <div class="markdown-preview" use:mermaidRenderer={renderedPreview}>
+                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                {@html renderedPreview}
+              </div>
+            {:else}
+              <div class="empty-preview">
+                <em>Markdown preview will appear here as you type...</em>
+              </div>
+            {/if}
+
+            {#if showScrollTopBtn}
+              <button
+                type="button"
+                class="btn-scroll-top"
+                onclick={scrollToTop}
+                title="Scroll to top"
+                aria-label="Scroll to top"
+              >
+                <IconChevronUp size={15} />
+              </button>
+            {/if}
+          </div>
+        {/if}
       </div>
     </div>
   </form>
@@ -842,20 +891,19 @@
 <style>
   .note-editor-wrapper {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 1.25rem;
     display: flex;
     flex-direction: column;
     height: 100%;
     box-sizing: border-box;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .editor-form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
     height: 100%;
+    min-height: 0;
   }
 
   .alert-error {
@@ -865,54 +913,68 @@
     background: #fef2f2;
     border: 1px solid #fecaca;
     color: #b91c1c;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.875rem;
     border-radius: 6px;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 500;
+    margin: 0.75rem 1.25rem 0 1.25rem;
   }
 
-  .editor-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
+  /* Centered calm canvas column for readable reading & writing */
+  .canvas-header-container {
+    max-width: 760px;
     width: 100%;
+    margin: 0 auto;
+    padding: 1.25rem 1.25rem 0.5rem 1.25rem;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
   }
 
-  .title-input-group {
+  .canvas-header-container.full-width {
+    max-width: 100%;
+    padding: 1rem 1.25rem 0.5rem 1.25rem;
+  }
+
+  .title-input-row {
     position: relative;
-    flex: 1 1 200px;
-    min-width: 180px;
     display: flex;
     align-items: center;
+    width: 100%;
   }
 
   .title-input {
     width: 100%;
-    padding: 0.5rem 4rem 0.5rem 0.75rem;
-    font-size: 1.125rem;
-    font-weight: 600;
+    padding: 0.25rem 0;
+    font-size: 1.75rem;
+    font-weight: 700;
     color: #0f172a;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
+    border: none;
+    border-bottom: 1px solid transparent;
     outline: none;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    background: transparent;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    transition: border-color 0.15s ease;
   }
 
   .title-input:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    border-bottom-color: #cbd5e1;
   }
 
   .title-input.invalid {
-    border-color: #ef4444;
+    border-bottom-color: #ef4444;
+  }
+
+  .title-input::placeholder {
+    color: #cbd5e1;
   }
 
   .char-count {
     position: absolute;
-    right: 0.75rem;
-    font-size: 0.75rem;
+    right: 0;
+    font-size: 0.6875rem;
     color: #94a3b8;
     pointer-events: none;
   }
@@ -922,356 +984,39 @@
     font-weight: 600;
   }
 
-  .top-controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .unsaved-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.25rem 0.625rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #b45309;
-    background: #fef3c7;
-    border: 1px solid #fde68a;
-    border-radius: 9999px;
-    white-space: nowrap;
-    animation: fadeInBadge 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .unsaved-dot {
-    font-size: 0.625rem;
-    color: #f59e0b;
-    line-height: 1;
-  }
-
-  @keyframes fadeInBadge {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  .pin-toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: #f8fafc;
-    color: #475569;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .pin-toggle-btn:hover {
-    background: #f1f5f9;
-  }
-
-  .pin-toggle-btn.pinned {
-    background: #fef3c7;
-    border-color: #f59e0b;
-    color: #92400e;
-    font-weight: 600;
-  }
-
-  .share-toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: #f8fafc;
-    color: #475569;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .share-toggle-btn:hover {
-    background: #f1f5f9;
-    color: #0f172a;
-    border-color: #94a3b8;
-  }
-
-  .share-toggle-btn.is-shared {
-    background: #ecfdf5;
-    border-color: #6ee7b7;
-    color: #047857;
-    font-weight: 600;
-  }
-
-  .share-toggle-btn.is-shared:hover {
-    background: #d1fae5;
-    border-color: #34d399;
-    color: #065f46;
-  }
-
-  .export-menu-wrapper {
-    position: relative;
-    display: inline-flex;
-  }
-
-  .export-toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: #f8fafc;
-    color: #475569;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .export-toggle-btn:hover:not(:disabled) {
-    background: #f1f5f9;
-    color: #0f172a;
-    border-color: #94a3b8;
-  }
-
-  .export-toggle-btn:disabled {
-    opacity: 0.6;
-    cursor: wait;
-  }
-
-  .export-toggle-btn:focus-visible {
-    outline: 2px solid #2563eb;
-    outline-offset: 1px;
-  }
-
-  .export-menu {
-    position: absolute;
-    top: calc(100% + 4px);
-    right: 0;
-    z-index: 50;
-    min-width: 200px;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    box-shadow:
-      0 4px 6px -1px rgba(15, 23, 42, 0.1),
-      0 2px 4px -2px rgba(15, 23, 42, 0.06);
-    padding: 0.25rem;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .export-menu-divider {
-    height: 1px;
-    background: #e2e8f0;
-    margin: 0.25rem 0.375rem;
-  }
-
-  .export-menu-item:disabled {
-    opacity: 0.6;
-    cursor: wait;
-  }
-
-  .export-menu-item {
+  .metadata-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.4375rem 0.625rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: #334155;
-    background: transparent;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.12s ease;
-  }
-
-  .export-menu-item:hover {
-    background: #f1f5f9;
-    color: #0f172a;
-  }
-
-  .export-menu-item:focus-visible {
-    outline: 2px solid #2563eb;
-    outline-offset: -2px;
-  }
-
-  .export-item-hint {
-    font-size: 0.6875rem;
-    color: #94a3b8;
-    font-weight: 600;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    padding: 0.0625rem 0.375rem;
-    white-space: nowrap;
-  }
-
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    border: 0;
-  }
-
-  .view-mode-tabs {
-    display: inline-flex;
-    flex-shrink: 0;
-    background: #f1f5f9;
-    padding: 0.1875rem;
-    border-radius: 6px;
-    border: 1px solid #cbd5e1;
-    gap: 2px;
-    align-items: center;
-    user-select: none;
-  }
-
-  .mode-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3125rem;
-    background: transparent;
-    border: 1px solid transparent;
-    padding: 0.25rem 0.625rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: #475569;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-    user-select: none;
-    white-space: nowrap;
-  }
-
-  .mode-btn:hover {
-    color: #0f172a;
-    background: rgba(255, 255, 255, 0.7);
-  }
-
-  .mode-btn.active {
-    background: #ffffff;
-    color: #0f172a;
-    font-weight: 600;
-    border-color: #cbd5e1;
-    box-shadow:
-      0 1px 3px rgba(15, 23, 42, 0.1),
-      0 1px 2px rgba(15, 23, 42, 0.06);
-  }
-
-  .mode-btn:focus-visible {
-    outline: 2px solid #2563eb;
-    outline-offset: 1px;
-  }
-
-  .focus-toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: #f8fafc;
-    color: #475569;
-    cursor: pointer;
-    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .focus-toggle-btn:hover {
-    background: #f1f5f9;
-    color: #0f172a;
-  }
-
-  .focus-toggle-btn.active {
-    background: #eff6ff;
-    border-color: #2563eb;
-    color: #1d4ed8;
-    font-weight: 600;
-  }
-
-  .focus-toggle-btn:focus-visible {
-    outline: 2px solid #2563eb;
-    outline-offset: 1px;
-  }
-
-  .pres-toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: #f8fafc;
-    color: #475569;
-    cursor: pointer;
-    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-    white-space: nowrap;
-  }
-
-  .pres-toggle-btn:hover {
-    background: #eff6ff;
-    border-color: #3b82f6;
-    color: #1d4ed8;
-  }
-
-  .pres-toggle-btn:focus-visible {
-    outline: 2px solid #2563eb;
-    outline-offset: 1px;
+    min-height: 28px;
+    flex-wrap: wrap;
   }
 
   .tags-manager-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0;
-  }
-
-  .tag-label {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: #64748b;
+    gap: 0.375rem;
+    flex: 1;
+    min-width: 180px;
   }
 
   .tag-chips-container {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.375rem;
-    flex: 1;
+    gap: 0.25rem;
   }
 
   .tag-chip {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.1875rem;
     background: #f1f5f9;
-    color: #334155;
-    font-size: 0.75rem;
+    color: #475569;
+    font-size: 0.6875rem;
     font-weight: 500;
-    padding: 0.1875rem 0.5rem;
+    padding: 0.125rem 0.375rem;
     border-radius: 4px;
     border: 1px solid #e2e8f0;
   }
@@ -1295,11 +1040,10 @@
   .tag-inline-input {
     border: none;
     outline: none;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     color: #0f172a;
-    padding: 0.25rem 0.375rem;
-    min-width: 140px;
-    flex: 1;
+    padding: 0.125rem 0.25rem;
+    min-width: 60px;
     background: transparent;
   }
 
@@ -1307,13 +1051,348 @@
     color: #94a3b8;
   }
 
-  .editor-workspace {
-    flex: 1;
-    min-height: 420px;
+  .public-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #059669;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    padding: 0.1875rem 0.5rem;
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .public-badge-pill:hover {
+    background: #d1fae5;
+  }
+
+  .public-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+  }
+
+  /* Minimal Clean Toolbar */
+  .minimal-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .toolbar-left,
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .status-indicator-wrap {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+  }
+
+  .unsaved-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    padding: 0.1875rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #b45309;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 9999px;
+    white-space: nowrap;
+  }
+
+  .unsaved-dot {
+    font-size: 0.5625rem;
+    color: #f59e0b;
+  }
+
+  .saved-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #64748b;
+  }
+
+  .view-mode-tabs {
+    display: inline-flex;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    gap: 2px;
+    align-items: center;
+  }
+
+  .mode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 0.1875rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #64748b;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .mode-btn:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.6);
+  }
+
+  .mode-btn.active {
+    background: #ffffff;
+    color: #0f172a;
+    font-weight: 600;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .mode-btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+  }
+
+  .pin-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
-    overflow: hidden;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .pin-toggle-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .pin-toggle-btn.pinned {
+    background: #fef3c7;
+    border-color: #fde68a;
+    color: #92400e;
+    font-weight: 600;
+  }
+
+  .share-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .share-toggle-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .share-toggle-btn.is-shared {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #059669;
+    font-weight: 600;
+  }
+
+  .more-menu-wrapper {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .btn-tool {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-tool:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .btn-tool.active {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+
+  .more-menu-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 50;
+    min-width: 210px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+    padding: 0.3125rem;
     display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .more-menu-dropdown:not(.open) {
+    display: none;
+  }
+
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.375rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #334155;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s ease;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .dropdown-item:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .dropdown-item.danger-item {
+    color: #dc2626;
+  }
+
+  .dropdown-item.danger-item:hover {
+    background: #fee2e2;
+  }
+
+  .dropdown-item-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .dropdown-item-hint {
+    font-size: 0.6875rem;
+    color: #94a3b8;
+  }
+
+  .dropdown-divider {
+    height: 1px;
+    background: #f1f5f9;
+    margin: 0.25rem 0.375rem;
+  }
+
+  .dropdown-section-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 0.06em;
+    padding: 0.25rem 0.625rem 0.125rem 0.625rem;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: #1d4ed8;
+  }
+
+  .btn-primary.is-dirty {
+    background: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  /* Workspace Prose Container */
+  .workspace-body-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 1.25rem 1.25rem 1.25rem;
+    box-sizing: border-box;
+  }
+
+  .workspace-body-container.full-width {
+    max-width: 100%;
+    padding: 0 1.25rem 1.25rem 1.25rem;
+  }
+
+  .editor-workspace {
+    flex: 1;
+    display: flex;
+    min-height: 480px;
     width: 100%;
     box-sizing: border-box;
   }
@@ -1321,13 +1400,10 @@
   .editor-workspace.split {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
   }
 
-  .editor-workspace.edit {
-    display: flex;
-    flex-direction: column;
-  }
-
+  .editor-workspace.edit,
   .editor-workspace.preview {
     display: flex;
     flex-direction: column;
@@ -1348,50 +1424,47 @@
   .editor-pane {
     display: flex;
     flex-direction: column;
-    flex: 1;
     width: 100%;
-    min-width: 0;
-    height: 100%;
   }
 
   .editor-workspace.split .editor-pane {
-    border-right: 1px solid #e2e8f0;
+    border-right: 1px solid #f1f5f9;
+    padding-right: 0.75rem;
   }
 
   .markdown-textarea {
     width: 100%;
     height: 100%;
-    min-height: 420px;
+    min-height: 480px;
     flex: 1;
-    padding: 1rem;
+    padding: 1rem 0;
     border: none;
     outline: none;
     resize: none;
     font-family: ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
-    font-size: 0.875rem;
-    line-height: 1.6;
+    font-size: 0.9375rem;
+    line-height: 1.7;
     tab-size: 2;
     -moz-tab-size: 2;
     white-space: pre-wrap;
     overflow-wrap: break-word;
-    overscroll-behavior: contain;
-    color: #0f172a;
-    background: #ffffff;
+    color: #1e293b;
+    background: transparent;
     box-sizing: border-box;
   }
 
   .preview-pane {
     position: relative;
-    padding: 1rem 1.25rem;
-    background: #fdfdfd;
+    padding: 1rem 0;
+    background: transparent;
     flex: 1;
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    height: 100%;
-    scroll-behavior: smooth;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
+  }
+
+  .editor-workspace.split .preview-pane {
+    padding-left: 0.75rem;
   }
 
   .btn-scroll-top {
@@ -1401,77 +1474,84 @@
     margin-top: -3rem;
     margin-right: 0.25rem;
     z-index: 20;
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: #ffffff;
-    border: 1px solid #cbd5e1;
-    color: #475569;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    opacity: 0.9;
+    transition: all 0.15s ease;
   }
 
   .btn-scroll-top:hover {
     background: #2563eb;
     border-color: #2563eb;
     color: #ffffff;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
-    transform: translateY(-2px);
-    opacity: 1;
   }
 
   .empty-preview {
     color: #94a3b8;
     font-size: 0.875rem;
-    padding: 2rem;
+    padding: 3rem 1rem;
     text-align: center;
   }
 
   .markdown-preview {
-    font-size: 0.875rem;
-    line-height: 1.6;
+    font-size: 0.9375rem;
+    line-height: 1.75;
     color: #1e293b;
     word-break: break-word;
     overflow-wrap: break-word;
   }
 
   :global(.markdown-preview h1) {
-    font-size: 1.5rem;
+    font-size: 1.625rem; /* 26px */
     font-weight: 700;
-    margin-top: 0;
+    margin-top: 1.25rem;
     margin-bottom: 0.75rem;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #f1f5f9;
     padding-bottom: 0.375rem;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+  }
+
+  :global(.markdown-preview h1:first-child) {
+    margin-top: 0;
   }
 
   :global(.markdown-preview h2) {
-    font-size: 1.25rem;
+    font-size: 1.25rem; /* 20px */
     font-weight: 600;
-    margin-top: 1.25rem;
+    margin-top: 1.5rem;
     margin-bottom: 0.5rem;
+    letter-spacing: -0.01em;
+    color: #0f172a;
   }
 
   :global(.markdown-preview h3) {
-    font-size: 1.0625rem;
+    font-size: 1.0625rem; /* 17px */
     font-weight: 600;
-    margin-top: 1rem;
+    margin-top: 1.25rem;
     margin-bottom: 0.375rem;
+    color: #0f172a;
   }
 
   :global(.markdown-preview p) {
     margin-top: 0;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.875rem;
+    color: #334155;
   }
 
   :global(.markdown-preview ul, .markdown-preview ol) {
     margin-top: 0;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.875rem;
     padding-left: 1.5rem;
+    color: #334155;
   }
 
   :global(.markdown-preview li) {
@@ -1506,7 +1586,7 @@
     line-height: 1.6;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
-    margin: 0.75rem 0;
+    margin: 1rem 0;
   }
 
   :global(.markdown-preview pre code) {
@@ -1524,28 +1604,10 @@
     min-width: 100%;
   }
 
-  :global(.markdown-preview pre::-webkit-scrollbar) {
-    height: 6px;
-  }
-
-  :global(.markdown-preview pre::-webkit-scrollbar-track) {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 3px;
-  }
-
-  :global(.markdown-preview pre::-webkit-scrollbar-thumb) {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-  }
-
-  :global(.markdown-preview pre::-webkit-scrollbar-thumb:hover) {
-    background: rgba(255, 255, 255, 0.35);
-  }
-
   :global(.markdown-preview blockquote) {
-    margin: 0.75rem 0;
+    margin: 1rem 0;
     padding-left: 1rem;
-    border-left: 4px solid #cbd5e1;
+    border-left: 3px solid #cbd5e1;
     color: #475569;
     font-style: italic;
   }
@@ -1554,7 +1616,6 @@
     width: 100%;
     overflow-x: auto;
     margin: 1rem 0;
-    -webkit-overflow-scrolling: touch;
     border-radius: 6px;
     border: 1px solid #e2e8f0;
   }
@@ -1568,26 +1629,19 @@
   }
 
   :global(.markdown-preview th) {
-    background: #f1f5f9;
+    background: #f8fafc;
     color: #0f172a;
     font-weight: 600;
-    border-bottom: 1px solid #cbd5e1;
-    border-right: 1px solid #e2e8f0;
-    padding: 0.625rem 0.875rem;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
     text-align: left;
-    white-space: nowrap;
   }
 
   :global(.markdown-preview td) {
-    border-bottom: 1px solid #e2e8f0;
-    border-right: 1px solid #e2e8f0;
-    padding: 0.625rem 0.875rem;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 0.5rem 0.75rem;
     color: #334155;
     vertical-align: top;
-  }
-
-  :global(.markdown-preview th:last-child, .markdown-preview td:last-child) {
-    border-right: none;
   }
 
   :global(.markdown-preview tr:last-child td) {
@@ -1595,95 +1649,7 @@
   }
 
   :global(.markdown-preview tr:nth-child(even)) {
-    background: #f8fafc;
-  }
-
-  .editor-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding-top: 0.5rem;
-  }
-
-  .footer-left {
-    display: flex;
-    align-items: center;
-  }
-
-  .footer-right {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-left: auto;
-  }
-
-  .btn-primary {
-    background: #2563eb;
-    color: #ffffff;
-    border: none;
-    padding: 0.5rem 1.125rem;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: #1d4ed8;
-  }
-
-  .btn-primary.is-dirty {
-    background: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    font-weight: 700;
-  }
-
-  .btn-primary.is-dirty:hover:not(:disabled) {
-    background: #1d4ed8;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35), 0 2px 4px 0 rgba(0, 0, 0, 0.1);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-secondary {
-    background: #f8fafc;
-    color: #475569;
-    border: 1px solid #cbd5e1;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: #f1f5f9;
-    color: #0f172a;
-  }
-
-  .btn-danger {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    background: transparent;
-    color: #dc2626;
-    border: 1px solid #fecaca;
-    padding: 0.5rem 0.875rem;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .btn-danger:hover:not(:disabled) {
-    background: #fee2e2;
+    background: #fcfcfd;
   }
 
   @media (max-width: 768px) {
@@ -1693,7 +1659,7 @@
 
     .editor-workspace.split .editor-pane {
       border-right: none;
-      border-bottom: 1px solid #e2e8f0;
+      border-bottom: 1px solid #f1f5f9;
       min-height: 240px;
     }
   }

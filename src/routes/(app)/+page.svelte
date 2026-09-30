@@ -5,7 +5,7 @@
   import { toast } from '$lib/stores/toast.svelte';
   import Toast from '$lib/components/Toast.svelte';
   import SearchBar from '$lib/components/SearchBar.svelte';
-  import TagFilter from '$lib/components/TagFilter.svelte';
+  import SidebarNav, { type NavSection } from '$lib/components/SidebarNav.svelte';
   import NoteList, { type BatchExportFormat } from '$lib/components/NoteList.svelte';
   import NoteEditor from '$lib/components/NoteEditor.svelte';
   import UnsavedChangesDialog from '$lib/components/UnsavedChangesDialog.svelte';
@@ -21,7 +21,8 @@
 
   let { data, form }: { data: PageData; form?: ActionData } = $props();
 
-  // Active UI states
+  // Active UI navigation states
+  let activeNavSection = $state<NavSection>('all');
   let selectedNoteId = $state<string | null>(null);
   let searchBarRef = $state<any>(null);
   let editorViewMode = $state<'edit' | 'preview' | 'split'>('split');
@@ -139,6 +140,19 @@
     }
   });
 
+  // Filtered notes according to sidebar section (All, Favorites, Recent)
+  let filteredNotes = $derived.by(() => {
+    let result = localNotes;
+    if (activeNavSection === 'favorites') {
+      result = result.filter((n) => n.isPinned);
+    } else if (activeNavSection === 'recent') {
+      result = [...result].sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+    }
+    return result;
+  });
+
   // Pure derived selected note object (no state mutation side effects)
   let selectedNote = $derived.by(() => {
     if (isCreatingNew) return null;
@@ -165,6 +179,11 @@
       }
     }
   });
+
+  // Counts for sidebar navigation
+  let favoritesCount = $derived(localNotes.filter((n) => n.isPinned).length);
+  let recentCount = $derived(localNotes.length);
+  let totalNotesCount = $derived(localNotes.length);
 
   // Selected tag object helper
   let selectedTag = $derived(
@@ -275,6 +294,14 @@
     };
   });
 
+  // Navigation section change (All, Favorites, Recent)
+  function handleSelectSection(section: NavSection) {
+    activeNavSection = section;
+    if (data.filters?.tagId) {
+      handleClearTag();
+    }
+  }
+
   // Client-side interactions
   function handleSelectNote(note: NoteCardData) {
     if (selectedNoteId === note.id && !isCreatingNew) {
@@ -371,9 +398,9 @@
   let selectedNoteIds = $state<string[]>([]);
   let isBatchExporting = $state(false);
 
-  let visibleNoteIds = $derived(localNotes.map((n) => n.id));
+  let visibleNoteIds = $derived(filteredNotes.map((n) => n.id));
 
-  // Drop selected ids that are no longer visible (filters changed, notes deleted)
+  // Drop selected ids that are no longer visible
   $effect(() => {
     const visible = new Set(visibleNoteIds);
     if (selectedNoteIds.some((id) => !visible.has(id))) {
@@ -633,7 +660,7 @@
   onSave={handleDialogSave}
 />
 
-<div class="app-dashboard-container">
+<div class="notes-workspace-root">
   <!-- Mobile Navigation Toolbar (Shown only on small viewports) -->
   <div class="mobile-nav-bar">
     {#if mobileView === 'editor'}
@@ -651,7 +678,7 @@
         onclick={() => (isTagFilterOpenMobile = !isTagFilterOpenMobile)}
       >
         <IconTag size={13} />
-        <span>{selectedTag ? `#${selectedTag.name}` : 'All Tags'}</span>
+        <span>{selectedTag ? `#${selectedTag.name}` : 'Sections & Tags'}</span>
       </button>
       <button
         type="button"
@@ -666,13 +693,17 @@
     {/if}
   </div>
 
-  <!-- Mobile Collapsible Tag Drawer -->
+  <!-- Mobile Collapsible Navigation Drawer -->
   {#if isTagFilterOpenMobile && mobileView === 'list'}
-    <div class="mobile-tags-drawer">
-      <TagFilter
-        tags={tagsWithCounts}
+    <div class="mobile-nav-drawer">
+      <SidebarNav
+        activeSection={activeNavSection}
         selectedTagId={data.filters?.tagId}
-        totalNotesCount={localNotes.length}
+        {totalNotesCount}
+        {favoritesCount}
+        {recentCount}
+        tags={tagsWithCounts}
+        onSelectSection={handleSelectSection}
         onSelectTag={handleSelectTag}
         onClearTag={handleClearTag}
       />
@@ -680,38 +711,19 @@
   {/if}
 
   <div class="master-detail-layout {isFocusMode ? 'focus-mode' : ''} {mobileView === 'editor' ? 'show-editor-mobile' : 'show-list-mobile'}">
-    <!-- PANE 1: Desktop Left Sidebar (Filters, Tags, Stats) -->
-    <aside class="pane-sidebar" aria-label="Filters and Tags">
-      <div class="sidebar-block">
-        <TagFilter
-          tags={tagsWithCounts}
-          selectedTagId={data.filters?.tagId}
-          totalNotesCount={localNotes.length}
-          onSelectTag={handleSelectTag}
-          onClearTag={handleClearTag}
-        />
-      </div>
-
-      {#if data.filters?.search || data.filters?.tagId}
-        <div class="sidebar-block active-filters-summary">
-          <div class="active-filter-header">
-            <span class="filter-badge-label">Active Filters</span>
-            <button type="button" class="btn-reset-filters" onclick={handleClearAllFilters}>
-              Reset All
-            </button>
-          </div>
-          {#if data.filters?.search}
-            <div class="filter-pill-item">
-              <span>Query: "{data.filters.search}"</span>
-            </div>
-          {/if}
-          {#if selectedTag}
-            <div class="filter-pill-item">
-              <span>Tag: #{selectedTag.name}</span>
-            </div>
-          {/if}
-        </div>
-      {/if}
+    <!-- PANE 1: Desktop Left Sidebar (Sections & Curated Tags) -->
+    <aside class="pane-sidebar" aria-label="Filters and Navigation">
+      <SidebarNav
+        activeSection={activeNavSection}
+        selectedTagId={data.filters?.tagId}
+        {totalNotesCount}
+        {favoritesCount}
+        {recentCount}
+        tags={tagsWithCounts}
+        onSelectSection={handleSelectSection}
+        onSelectTag={handleSelectTag}
+        onClearTag={handleClearTag}
+      />
     </aside>
 
     <!-- PANE 2: Middle Master List Pane (Search, New Button, Note Cards) -->
@@ -720,7 +732,7 @@
         <SearchBar
           bind:this={searchBarRef}
           value={data.filters?.search}
-          placeholder="Search title & content..."
+          placeholder="Search notes..."
           onSearch={handleSearch}
           onClear={() => handleSearch('')}
         />
@@ -731,14 +743,14 @@
           title="New note (Cmd/Ctrl+N)"
           aria-label="New note"
         >
-          <IconPlus size={14} />
-          <span>New Note</span>
+          <IconPlus size={13} />
+          <span>New</span>
         </button>
       </div>
 
       <div class="master-list-scrollable">
         <NoteList
-          notes={localNotes}
+          notes={filteredNotes}
           {selectedNoteId}
           searchQuery={data.filters?.search}
           selectedTagId={data.filters?.tagId}
@@ -782,11 +794,11 @@
         <div class="no-selection-workspace">
           <div class="no-selection-card">
             <div class="no-selection-icon-wrapper">
-              <IconNote size={32} />
+              <IconNote size={28} />
             </div>
             <h3 class="no-selection-title">Select a Note</h3>
             <p class="no-selection-desc">
-              Choose a note from the list on the left to view or edit, or create a new note to begin writing.
+              Choose a note from the list on the left to read or edit, or create a new note to start writing.
             </p>
             <button
               type="button"
@@ -794,7 +806,7 @@
               onclick={handleCreateNew}
               title="New note (Cmd/Ctrl+N)"
             >
-              <IconPlus size={14} />
+              <IconPlus size={13} />
               <span>Create New Note</span>
             </button>
           </div>
@@ -805,20 +817,25 @@
 </div>
 
 <style>
-  .app-dashboard-container {
+  .notes-workspace-root {
     display: flex;
     flex-direction: column;
     width: 100%;
-    min-height: calc(100vh - 120px);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    background: #ffffff;
   }
 
   .mobile-nav-bar {
     display: none;
     align-items: center;
     justify-content: space-between;
-    padding: 0.5rem 0;
-    margin-bottom: 0.75rem;
+    padding: 0.5rem 1rem;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
     gap: 0.75rem;
+    flex-shrink: 0;
   }
 
   .btn-back-nav {
@@ -828,15 +845,15 @@
     background: #ffffff;
     border: 1px solid #cbd5e1;
     color: #0f172a;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.375rem 0.75rem;
+    padding: 0.3125rem 0.625rem;
     border-radius: 6px;
     cursor: pointer;
   }
 
   .mobile-nav-title {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: #0f172a;
     overflow: hidden;
@@ -851,8 +868,8 @@
     background: #ffffff;
     border: 1px solid #cbd5e1;
     color: #475569;
-    font-size: 0.8125rem;
-    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    padding: 0.3125rem 0.625rem;
     border-radius: 6px;
     cursor: pointer;
   }
@@ -860,33 +877,35 @@
   .btn-mobile-new-note {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
+    gap: 0.3125rem;
     background: #2563eb;
     color: #ffffff;
     border: none;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.375rem 0.875rem;
+    padding: 0.3125rem 0.75rem;
     border-radius: 6px;
     cursor: pointer;
   }
 
-  .mobile-tags-drawer {
+  .mobile-nav-drawer {
     display: none;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    max-height: 280px;
+    overflow-y: auto;
+    flex-shrink: 0;
   }
 
+  /* 3-Column Edge-to-Edge Desktop Workspace Layout */
   .master-detail-layout {
     display: grid;
-    grid-template-columns: 200px 320px 1fr;
-    gap: 1.25rem;
-    align-items: start;
-    height: calc(100vh - 120px);
-    transition: grid-template-columns 0.2s ease;
+    grid-template-columns: 210px 310px 1fr;
+    height: 100%;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+    transition: grid-template-columns 0.15s ease;
   }
 
   .master-detail-layout.focus-mode {
@@ -899,122 +918,87 @@
   }
 
   .master-detail-layout.focus-mode .pane-detail-workspace {
-    max-width: 1000px;
     width: 100%;
-    margin: 0 auto;
     height: 100%;
   }
 
+  /* Pane 1: Sidebar */
   .pane-sidebar {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    background: #f8fafc;
+    border-right: 1px solid #e2e8f0;
     height: 100%;
+    min-height: 0;
     box-sizing: border-box;
     overflow-y: auto;
     overscroll-behavior: contain;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
+    user-select: none;
   }
 
-  .sidebar-block {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .active-filters-summary {
-    border-top: 1px solid #f1f5f9;
-    padding-top: 0.75rem;
-  }
-
-  .active-filter-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .filter-badge-label {
-    font-size: 0.6875rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #64748b;
-  }
-
-  .btn-reset-filters {
-    background: none;
-    border: none;
-    font-size: 0.6875rem;
-    color: #2563eb;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .btn-reset-filters:hover {
-    text-decoration: underline;
-  }
-
-  .filter-pill-item {
-    font-size: 0.75rem;
-    color: #475569;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-  }
-
+  /* Pane 2: Notes List */
   .pane-master-list {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
     height: 100%;
+    min-height: 0;
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
     box-sizing: border-box;
+    overflow: hidden;
   }
 
   .master-list-header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    flex-shrink: 0;
   }
 
   .btn-create-header {
     display: inline-flex;
     align-items: center;
-    gap: 0.3125rem;
+    gap: 0.25rem;
     background: #2563eb;
     color: #ffffff;
     border: none;
     border-radius: 6px;
-    padding: 0.5625rem 0.875rem;
-    font-size: 0.8125rem;
+    padding: 0.4375rem 0.625rem;
+    font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
     cursor: pointer;
     transition: background 0.15s ease;
+    flex-shrink: 0;
   }
 
   .btn-create-header:hover {
     background: #1d4ed8;
   }
 
+  .btn-create-header:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+  }
+
   .master-list-scrollable {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    padding-right: 0.25rem;
   }
 
+  /* Pane 3: Detail Workspace */
   .pane-detail-workspace {
     height: 100%;
+    min-height: 0;
+    background: #ffffff;
     box-sizing: border-box;
-    overscroll-behavior: contain;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .no-selection-workspace {
@@ -1023,8 +1007,6 @@
     justify-content: center;
     height: 100%;
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
     padding: 2rem;
     box-sizing: border-box;
   }
@@ -1034,24 +1016,24 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    max-width: 320px;
-    gap: 0.75rem;
+    max-width: 280px;
+    gap: 0.625rem;
   }
 
   .no-selection-icon-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     background: #f1f5f9;
-    color: #64748b;
+    color: #94a3b8;
     border-radius: 10px;
   }
 
   .no-selection-title {
     margin: 0;
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: 600;
     color: #0f172a;
   }
@@ -1060,19 +1042,19 @@
     margin: 0;
     font-size: 0.8125rem;
     color: #64748b;
-    line-height: 1.5;
+    line-height: 1.45;
   }
 
   .btn-create-starter {
-    margin-top: 0.5rem;
+    margin-top: 0.375rem;
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
     background: #2563eb;
     color: #ffffff;
     border: none;
-    padding: 0.5rem 1.125rem;
-    font-size: 0.875rem;
+    padding: 0.4375rem 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     border-radius: 6px;
     cursor: pointer;
@@ -1092,7 +1074,7 @@
       display: none;
     }
 
-    .mobile-tags-drawer {
+    .mobile-nav-drawer {
       display: block;
     }
   }
@@ -1100,7 +1082,6 @@
   @media (max-width: 768px) {
     .master-detail-layout {
       grid-template-columns: 1fr;
-      height: auto;
     }
 
     .mobile-nav-bar {

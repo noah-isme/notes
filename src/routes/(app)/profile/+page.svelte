@@ -264,11 +264,15 @@
 <style>
   .profile-container {
     max-width: 860px;
+    width: 100%;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-    padding-bottom: 3rem;
+    padding: 1.5rem 1rem 3rem 1rem;
+    box-sizing: border-box;
+    overflow-y: auto;
+    height: 100%;
   }
 
   /* Top Navigation */

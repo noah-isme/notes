@@ -9,22 +9,25 @@
 <div class="app-layout">
   <header class="app-header">
     <div class="header-content">
-      <a href="/" class="logo">
-        <span class="logo-icon-wrapper">
-          <IconNote size={18} />
-        </span>
-        <span class="logo-text">Notes</span>
-      </a>
+      <div class="header-left">
+        <a href="/" class="logo" title="Notes Workspace">
+          <span class="logo-icon-wrapper">
+            <IconNote size={15} />
+          </span>
+          <span class="logo-text">Notes</span>
+        </a>
+      </div>
+
       {#if data.user}
-        <div class="user-menu">
+        <div class="header-right">
           <a href="/profile" class="user-profile-btn" title="Manage Account & Profile">
             <span class="avatar-chip">
-              <IconUser size={13} />
+              <IconUser size={12} />
             </span>
             <span class="user-display-label">{data.user.name || data.user.email}</span>
           </a>
           <form action="/logout" method="POST" class="logout-form">
-            <button type="submit" class="btn-logout">Logout</button>
+            <button type="submit" class="btn-logout" title="Sign out of account">Logout</button>
           </form>
         </div>
       {/if}
@@ -44,77 +47,91 @@
     background-color: #f8fafc;
     color: #0f172a;
     -webkit-font-smoothing: antialiased;
+    overflow: hidden;
   }
 
   .app-layout {
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    background-color: #ffffff;
   }
 
   .app-header {
+    height: 46px;
+    min-height: 46px;
     background: #ffffff;
     border-bottom: 1px solid #e2e8f0;
-    padding: 0.625rem 1.5rem;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-  }
-
-  .header-content {
-    max-width: 1280px;
-    margin: 0 auto;
+    padding: 0 1rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    z-index: 40;
+    flex-shrink: 0;
+    box-sizing: border-box;
+  }
+
+  .header-content {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
   .logo {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 1.125rem;
+    font-size: 0.9375rem;
     font-weight: 700;
     color: #0f172a;
     text-decoration: none;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
   }
 
   .logo-icon-wrapper {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     background: #0f172a;
     color: #ffffff;
-    border-radius: 6px;
+    border-radius: 5px;
   }
 
   .logo-text {
-    font-size: 1.0625rem;
+    font-size: 0.9375rem;
     font-weight: 700;
   }
 
-  .user-menu {
+  .header-right {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   .user-profile-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.4375rem;
+    gap: 0.375rem;
     text-decoration: none;
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    padding: 0.3125rem 0.6875rem;
+    padding: 0.25rem 0.625rem;
     border-radius: 6px;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     color: #334155;
     transition: all 0.15s ease;
-    max-width: 220px;
+    max-width: 200px;
   }
 
   .user-profile-btn:hover {
@@ -137,16 +154,21 @@
     font-weight: 500;
   }
 
+  .logout-form {
+    margin: 0;
+  }
+
   .btn-logout {
-    background: #f8fafc;
-    color: #475569;
+    background: transparent;
+    color: #64748b;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
-    padding: 0.3125rem 0.6875rem;
-    font-size: 0.8125rem;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease-in-out;
+    font-family: inherit;
   }
 
   .btn-logout:hover {
@@ -157,10 +179,13 @@
 
   .app-main {
     flex: 1;
-    max-width: 1280px;
+    min-height: 0;
     width: 100%;
-    margin: 0 auto;
-    padding: 1.5rem;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     box-sizing: border-box;
   }
 </style>
