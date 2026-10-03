@@ -32,7 +32,6 @@
     font-size: 0.875rem;
     line-height: 1.6;
     color: #1e293b;
-    word-break: break-word;
     overflow-wrap: break-word;
   }
 
@@ -81,7 +80,7 @@
     font-family: ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
     font-size: 0.8125rem;
     color: #0f172a;
-    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   :global(.markdown-viewer pre) {
@@ -157,6 +156,7 @@
 
   :global(.markdown-viewer table) {
     width: 100%;
+    min-width: 600px;
     border-collapse: collapse;
     margin: 0;
     font-size: 0.875rem;
@@ -172,6 +172,7 @@
     padding: 0.625rem 0.875rem;
     text-align: left;
     white-space: nowrap;
+    word-break: normal;
   }
 
   :global(.markdown-viewer td) {
@@ -180,6 +181,17 @@
     padding: 0.625rem 0.875rem;
     color: #334155;
     vertical-align: top;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  :global(.markdown-viewer table code) {
+    white-space: nowrap;
+    word-break: normal;
+  }
+
+  :global(.markdown-viewer td[style*="text-align: center"]) {
+    white-space: nowrap;
   }
 
   :global(.markdown-viewer th:last-child, .markdown-viewer td:last-child) {

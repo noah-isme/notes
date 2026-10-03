@@ -167,6 +167,10 @@ function parseInline(text: string): string {
   // Strikethrough (~~text~~)
   result = result.replace(/~~([^~]+)~~/g, '<del>$1</del>');
 
+  // LaTeX & math arrows (e.g. $\rightarrow$, \rightarrow, -->, ->)
+  result = result.replace(/\$\\rightarrow\$/g, '→');
+  result = result.replace(/\\rightarrow\b/g, '→');
+
   return result;
 }
 

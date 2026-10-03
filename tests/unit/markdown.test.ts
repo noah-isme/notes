@@ -104,6 +104,13 @@ describe('Unit: Markdown Parser & XSS Sanitizer', () => {
       expect(html).toContain('⚙️ Operations (OPS)');
     });
 
+    it('should render arrow symbols from LaTeX notation cleanly', async () => {
+      const input = 'Task A $\\rightarrow$ Task B \\rightarrow Task C';
+      const html = await parse(input);
+      expect(html).toContain('Task A → Task B → Task C');
+      expect(html).not.toContain('\\rightarrow');
+    });
+
     it('should handle empty string and plain text gracefully', async () => {
       expect(await parse('')).toBe('');
       const plain = await parse('Plain text with no special markdown.');

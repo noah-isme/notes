@@ -1565,7 +1565,7 @@
     font-family: ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
     font-size: 0.8125rem;
     color: #0f172a;
-    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   :global(.markdown-preview pre) {
@@ -1622,6 +1622,7 @@
 
   :global(.markdown-preview table) {
     width: 100%;
+    min-width: 600px;
     border-collapse: collapse;
     margin: 0;
     font-size: 0.875rem;
@@ -1633,15 +1634,26 @@
     color: #0f172a;
     font-weight: 600;
     border-bottom: 1px solid #e2e8f0;
+    border-right: 1px solid #f1f5f9;
     padding: 0.5rem 0.75rem;
     text-align: left;
+    white-space: nowrap;
+    word-break: normal;
   }
 
   :global(.markdown-preview td) {
     border-bottom: 1px solid #f1f5f9;
+    border-right: 1px solid #f1f5f9;
     padding: 0.5rem 0.75rem;
     color: #334155;
     vertical-align: top;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  :global(.markdown-preview th:last-child),
+  :global(.markdown-preview td:last-child) {
+    border-right: none;
   }
 
   :global(.markdown-preview tr:last-child td) {
@@ -1650,6 +1662,15 @@
 
   :global(.markdown-preview tr:nth-child(even)) {
     background: #fcfcfd;
+  }
+
+  :global(.markdown-preview table code) {
+    white-space: nowrap;
+    word-break: normal;
+  }
+
+  :global(.markdown-preview td[style*="text-align: center"]) {
+    white-space: nowrap;
   }
 
   @media (max-width: 768px) {
